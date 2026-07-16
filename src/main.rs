@@ -1,21 +1,73 @@
-use std::{mem, io::{self, Read}};
+use std::{mem, io::{self, Read, Write}, process};
 use libc;
+use term_size;
+
 
 fn main() {
    let _raw_mode = RawMode::new();
     
-    let mut c = [0u8; 1];
-    let mut stdin = io::stdin();
-    while stdin.read(&mut c).unwrap() == 1 && c[0] != b'q' {
-        if c[0].is_ascii_control() {
-            println!("{}\r\n", c[0])
-        } else {
-            println!("{} -> {}\r\n", c[0], c[0] as char)
-        }
+    loop {
+        refresh_screen();
+        process_key_press();
     }
 }
 
 
+fn draw_rows() {
+    let config = Config::new();
+    for _ in 0..config.screen_rows {
+        print!("~\r\n");
+    }
+}
+
+fn refresh_screen() {
+    clean_screen(false);
+    draw_rows();
+    print!("\x1b[H"); //reposition the cursor
+    io::stdout().flush().unwrap()
+}
+
+fn clean_screen(do_flush: bool) {
+    print!("\x1b[2J"); //clear the screen
+    print!("\x1b[H"); //reposition the cursor
+    if do_flush {
+        io::stdout().flush().unwrap()
+    }
+}
+
+fn process_key_press() {
+    loop {
+        let input = read_key();
+        if input == ctrl_key(b'q') {
+            clean_screen(true);
+            process::exit(0)
+        }
+    }
+}
+
+fn read_key() -> u8 {
+    let mut c = [0u8; 1];
+    let mut stdin = io::stdin();
+    while stdin.read(&mut c).unwrap() == 1 {
+        
+    }
+    c[0]
+}
+
+struct Config {
+    screen_rows: u16,
+    screen_cols: u16
+}
+
+impl Config {
+    fn new() -> Self {
+        let (rows, cols) = get_window_size();
+        Self {
+            screen_rows: rows,
+            screen_cols: cols
+        }
+    }
+}
 
 pub struct RawMode {
     original: libc::termios,
@@ -26,7 +78,7 @@ impl RawMode {
         let mut termios = mem::MaybeUninit::<libc::termios>::uninit();
         unsafe {
             if libc::tcgetattr(libc::STDIN_FILENO, termios.as_mut_ptr()) == -1 {
-                die_by_ffi("tcgetattr in RawMode::new()")
+                die("tcgetattr in RawMode::new()", true)
             }
         }
         let raw = Self {
@@ -52,7 +104,7 @@ impl RawMode {
                 libc::TCSAFLUSH,
                 &raw)
                 == 1 {
-                    die_by_ffi("tcsetattr in RawMode::enable()")
+                    die("tcsetattr in RawMode::enable()", true)
             }
         }
     }
@@ -64,7 +116,7 @@ impl RawMode {
                 libc::TCSAFLUSH,
                 &self.original)
                 == 1 {
-                    die_by_ffi("tcsetattr in RawMode::disable()")
+                    die("tcsetattr in RawMode::disable()", true)
                 }
         }
     }
@@ -76,7 +128,46 @@ impl Drop for RawMode {
     }
 }
 
+fn get_window_size() -> (u16, u16) {
+    let mut window = mem::MaybeUninit::<libc::winsize>::uninit();
+    let mut result = (0u16, 0u16);
+    unsafe {
+        let mut success = false;
+        if libc::ioctl(
+            libc::STDOUT_FILENO,
+            libc::TIOCGWINSZ,
+            &mut window) >= 0 {
+            let win = window.assume_init();
+            if win.ws_row > 0 && win.ws_col > 0 {
+                success = true;
+                result = (win.ws_row, win.ws_col);
+            }
+        }
 
-fn die_by_ffi(msg: &str) -> ! {
-    panic!("{}", msg)
+        if !success {
+            print!("\x1b[999C\x1b[999B");
+            result = get_cursor_position();
+        }
+    }
+    result
+}
+
+fn get_cursor_position() -> (u16, u16) {
+    // print!("\x1b[6n");
+    // io::stdout().flush().unwrap();
+    // println!();
+    die("cant get the size of window", true)
+}
+
+fn die(msg: &str, by_ffi: bool) -> ! {
+    clean_screen(true);
+    if by_ffi {
+        panic!("by foreign function interface: {}", msg)
+    } else {
+        panic!("{}", msg)
+    }
+}
+
+fn ctrl_key(c: u8) -> u8 {
+    c & 0x1f
 }
