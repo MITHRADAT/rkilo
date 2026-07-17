@@ -1,4 +1,4 @@
-use std::{mem, io::{self, Read, Write}, process};
+use std::{mem, io::{self, Read, Write}, process, error};
 use libc;
 use term_size;
 
@@ -8,7 +8,10 @@ fn main() {
     
     loop {
         refresh_screen();
-        process_key_press();
+        match process_key_press() {
+            ProcessKeyResult::Continue => (),
+            ProcessKeyResult::Quit => break
+        }
     }
 }
 
@@ -21,37 +24,41 @@ fn draw_rows() {
 }
 
 fn refresh_screen() {
-    clean_screen(false);
+    clean_screen();
     draw_rows();
     print!("\x1b[H"); //reposition the cursor
+    flush()
+}
+
+fn clean_screen() {
+    print!("\x1b[2J"); //clear the screen
+    print!("\x1b[H"); //reposition the cursor
+}
+
+fn flush() {
     io::stdout().flush().unwrap()
 }
 
-fn clean_screen(do_flush: bool) {
-    print!("\x1b[2J"); //clear the screen
-    print!("\x1b[H"); //reposition the cursor
-    if do_flush {
-        io::stdout().flush().unwrap()
+fn process_key_press() -> ProcessKeyResult {
+    let input = read_key();
+    if input == ctrl_key(b'q') {
+        clean_screen();
+        flush();
+        return ProcessKeyResult::Quit
     }
-}
-
-fn process_key_press() {
-    loop {
-        let input = read_key();
-        if input == ctrl_key(b'q') {
-            clean_screen(true);
-            process::exit(0)
-        }
-    }
+    ProcessKeyResult::Continue
 }
 
 fn read_key() -> u8 {
     let mut c = [0u8; 1];
     let mut stdin = io::stdin();
-    while stdin.read(&mut c).unwrap() == 1 {
-        
+    loop {
+        match stdin.read(&mut c) {
+            Ok(1) => return c[0],
+            Ok(_) => continue,
+            Err(err) => die(DieReason::Panic(err.to_string()))
+        }
     }
-    c[0]
 }
 
 struct Config {
@@ -78,7 +85,7 @@ impl RawMode {
         let mut termios = mem::MaybeUninit::<libc::termios>::uninit();
         unsafe {
             if libc::tcgetattr(libc::STDIN_FILENO, termios.as_mut_ptr()) == -1 {
-                die("tcgetattr in RawMode::new()", true)
+                die(DieReason::FFI("tcgetattr in RawMode::new()".to_string()))
             }
         }
         let raw = Self {
@@ -103,8 +110,8 @@ impl RawMode {
                 libc::STDIN_FILENO,
                 libc::TCSAFLUSH,
                 &raw)
-                == 1 {
-                    die("tcsetattr in RawMode::enable()", true)
+                == -1 {
+                    die(DieReason::FFI("tcsetattr in RawMode::enable()".to_string()))
             }
         }
     }
@@ -115,8 +122,8 @@ impl RawMode {
                 libc::STDIN_FILENO,
                 libc::TCSAFLUSH,
                 &self.original)
-                == 1 {
-                    die("tcsetattr in RawMode::disable()", true)
+                == -1 {
+                    die(DieReason::FFI("tcsetattr in RawMode::disable()".to_string()))
                 }
         }
     }
@@ -130,44 +137,48 @@ impl Drop for RawMode {
 
 fn get_window_size() -> (u16, u16) {
     let mut window = mem::MaybeUninit::<libc::winsize>::uninit();
-    let mut result = (0u16, 0u16);
     unsafe {
-        let mut success = false;
         if libc::ioctl(
             libc::STDOUT_FILENO,
             libc::TIOCGWINSZ,
-            &mut window) >= 0 {
+            window.as_mut_ptr()) >= 0 {
             let win = window.assume_init();
             if win.ws_row > 0 && win.ws_col > 0 {
-                success = true;
-                result = (win.ws_row, win.ws_col);
+                return (win.ws_row, win.ws_col)
             }
         }
-
-        if !success {
-            print!("\x1b[999C\x1b[999B");
-            result = get_cursor_position();
-        }
     }
-    result
+    get_cursor_position()
 }
 
 fn get_cursor_position() -> (u16, u16) {
+    // print!("\x1b[999C\x1b[999B");
     // print!("\x1b[6n");
     // io::stdout().flush().unwrap();
     // println!();
-    die("cant get the size of window", true)
+    die(DieReason::FFI("cant get the size of window".to_string()))
 }
 
-fn die(msg: &str, by_ffi: bool) -> ! {
-    clean_screen(true);
-    if by_ffi {
-        panic!("by foreign function interface: {}", msg)
-    } else {
-        panic!("{}", msg)
+fn die(reason: DieReason) -> ! {
+    clean_screen();
+    flush();
+    match reason {
+        DieReason::Panic(msg) => panic!("{}", msg),
+        DieReason::FFI(msg) => panic!("by foreign function interface: {}", msg)
     }
+}
+
+enum DieReason {
+    Panic(String),
+    FFI(String)
+}
+
+enum ProcessKeyResult {
+    Continue,
+    Quit
 }
 
 fn ctrl_key(c: u8) -> u8 {
     c & 0x1f
 }
+
