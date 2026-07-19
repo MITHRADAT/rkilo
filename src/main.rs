@@ -1,4 +1,4 @@
-use std::{mem, io::{self, Read, Write}, process, error};
+use std::{mem, io::{self, Read, Write}, sync::OnceLock};
 use libc;
 use term_size;
 
@@ -17,7 +17,7 @@ fn main() {
 
 
 fn draw_rows() {
-    let config = Config::new();
+    let config = Config::get();
     for _ in 0..config.screen_rows {
         print!("~\r\n");
     }
@@ -61,18 +61,23 @@ fn read_key() -> u8 {
     }
 }
 
+static CONFIG: OnceLock<Config> = OnceLock::new();
+
 struct Config {
     screen_rows: u16,
     screen_cols: u16
 }
 
 impl Config {
-    fn new() -> Self {
-        let (rows, cols) = get_window_size();
-        Self {
-            screen_rows: rows,
-            screen_cols: cols
-        }
+    pub fn get() -> &'static Config {
+        let config = CONFIG.get_or_init(|| {
+            let (rows, cols) = window_size();
+            Config {
+                screen_rows: rows,
+                screen_cols: cols,
+            }
+        });
+        config
     }
 }
 
@@ -135,7 +140,7 @@ impl Drop for RawMode {
     }
 }
 
-fn get_window_size() -> (u16, u16) {
+fn window_size() -> (u16, u16) {
     let mut window = mem::MaybeUninit::<libc::winsize>::uninit();
     unsafe {
         if libc::ioctl(
@@ -148,10 +153,10 @@ fn get_window_size() -> (u16, u16) {
             }
         }
     }
-    get_cursor_position()
+    cursor_position()
 }
 
-fn get_cursor_position() -> (u16, u16) {
+fn cursor_position() -> (u16, u16) {
     // print!("\x1b[999C\x1b[999B");
     // print!("\x1b[6n");
     // io::stdout().flush().unwrap();
