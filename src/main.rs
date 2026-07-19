@@ -1,14 +1,16 @@
 use std::{mem, io::{self, Read, Write}, sync::OnceLock};
 use libc;
-use term_size;
 
+mod logger;
+
+use logger::Logger;
 
 fn main() {
    let _raw_mode = RawMode::new();
     
     loop {
         refresh_screen();
-        match process_key_press() {
+        match process_keypress() {
             ProcessKeyResult::Continue => (),
             ProcessKeyResult::Quit => break
         }
@@ -27,7 +29,7 @@ fn refresh_screen() {
     clean_screen();
     draw_rows();
     print!("\x1b[H"); //reposition the cursor
-    flush()
+    flush();
 }
 
 fn clean_screen() {
@@ -36,10 +38,10 @@ fn clean_screen() {
 }
 
 fn flush() {
-    io::stdout().flush().unwrap()
+    io::stdout().flush().unwrap();
 }
 
-fn process_key_press() -> ProcessKeyResult {
+fn process_keypress() -> ProcessKeyResult {
     let input = read_key();
     if input == ctrl_key(b'q') {
         clean_screen();
@@ -54,7 +56,16 @@ fn read_key() -> u8 {
     let mut stdin = io::stdin();
     loop {
         match stdin.read(&mut c) {
-            Ok(1) => return c[0],
+            Ok(1) => {
+                let text: String;
+                if c[0].is_ascii_control() {
+                    text = format!("you entered ascii control: {} -> {}", c[0], c[0] as char);
+                } else {
+                    text = format!("you entered: {}", c[0] as char);
+                }
+                Logger::log(text.as_str());
+                return c[0]
+            },
             Ok(_) => continue,
             Err(err) => die(DieReason::Panic(err.to_string()))
         }
@@ -157,14 +168,18 @@ fn window_size() -> (u16, u16) {
 }
 
 fn cursor_position() -> (u16, u16) {
-    // print!("\x1b[999C\x1b[999B");
+    Logger::log("cursor_position started");
+    print!("\x1b[999C\x1b[999B");
     // print!("\x1b[6n");
-    // io::stdout().flush().unwrap();
+    flush();
+    read_key();
     // println!();
+    Logger::log("cursor_position ended");
     die(DieReason::FFI("cant get the size of window".to_string()))
 }
 
 fn die(reason: DieReason) -> ! {
+    Logger::log("die started");
     clean_screen();
     flush();
     match reason {
@@ -186,4 +201,3 @@ enum ProcessKeyResult {
 fn ctrl_key(c: u8) -> u8 {
     c & 0x1f
 }
-
