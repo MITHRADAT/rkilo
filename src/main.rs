@@ -1,5 +1,5 @@
-use std::{io::{self, Read}};
-use libc;
+use std::{io::{self, Read}, cmp};
+// use libc;
 
 mod logger;
 mod config;
@@ -31,15 +31,49 @@ fn end() {
 }
 
 fn draw_rows() {
-    for _ in 0..Config::get().screen_rows() {
-        print!("~\r\n");
+    let config = Config::get();
+    let rows = config.screen_rows();
+    let cols = config.screen_cols() as usize;
+    let message_row = rows / 3;
+
+    //before welcome message
+    for _ in 0..message_row {
+        print!("~");
+        print!("\x1b[K"); //clear line
+        print!("\r\n");
     }
+
+    //welcome message
+    print!("~");
+    let mut welcome = "kilo editor written in rust -- version 0.0.1";
+    let welcome_len = cmp::min(welcome.len(), cols);
+    welcome = &welcome[..welcome_len];
+    let padding = (cols - 1 - welcome_len) / 2;
+    for _ in 0..padding {
+        print!(" ");
+    }
+    print!("{}", welcome);
+    print!("\x1b[K"); //clear line
+    print!("\r\n");
+
+    //after welcome message
+    for _ in message_row + 1..rows - 1 {
+        print!("~");
+        print!("\x1b[K"); //clear line
+        print!("\r\n");
+    }
+    
+    //last line
+    print!("~");
+    print!("\x1b[K"); //clear line
 }
 
 fn refresh_screen() {
-    clean_screen();
+    print!("\x1b[?25l"); //hide the cursor
+    print!("\x1b[H"); //reposition the cursor
     draw_rows();
     print!("\x1b[H"); //reposition the cursor
+    print!("\x1b[?25h"); //show the cursor
     flush();
 }
 

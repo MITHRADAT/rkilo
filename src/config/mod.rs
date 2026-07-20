@@ -89,8 +89,8 @@ fn window_size() -> (u16, u16) {
 }
 
 fn cursor_position() -> (u16, u16) {
-    print!("\x1b[999C\x1b[999B");
-    print!("\x1b[6n");
+    print!("\x1b[999C\x1b[999B"); //go 999 times forward and 999 times downward 
+    print!("\x1b[6n"); //Device Status Report(DSR); get cursor position
     flush();
 
     let mut buff = [0u8; 32];
