@@ -1,11 +1,12 @@
-use std::{io::{self, Read, Write}};
+use std::{io::{self, Read}};
 use libc;
 
 mod logger;
 mod config;
+mod common;
 
-use logger::Logger;
 use config::Config;
+use common::*;
 
 fn main() {
    init();
@@ -42,15 +43,6 @@ fn refresh_screen() {
     flush();
 }
 
-fn clean_screen() {
-    print!("\x1b[2J"); //clear the screen
-    print!("\x1b[H"); //reposition the cursor
-}
-
-fn flush() {
-    io::stdout().flush().unwrap();
-}
-
 fn process_keypress() -> ProcessKeyResult {
     let input = read_key();
     if input == ctrl_key(b'q') {
@@ -74,26 +66,6 @@ fn read_key() -> u8 {
             }
         }
     }
-}
-
-fn die(reason: DieReason) -> ! {
-    clean_screen();
-    flush();
-    match reason {
-        DieReason::Panic(msg) => {
-            Logger::log(format!("die by panic:\r\n{}", msg).as_str());
-            panic!("{}", msg)
-        },
-        DieReason::FFI(msg) => {
-            Logger::log(format!("die by ffi:\r\n{}", msg).as_str());
-            panic!("by foreign function interface: {}", msg)
-        }
-    }
-}
-
-enum DieReason {
-    Panic(String),
-    FFI(String)
 }
 
 enum ProcessKeyResult {
