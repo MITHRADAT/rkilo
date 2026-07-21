@@ -1,5 +1,4 @@
 use std::{io::{self, Read}, cmp, process};
-// use libc;
 
 mod logger;
 mod config;
@@ -9,16 +8,14 @@ mod cursor;
 use common::*;
 use cursor::*;
 use config::Config;
-    
+
 fn main() {
    init();
-    
+
     loop {
         refresh_screen();
         process_keypress();
     }
-
-    //end();
 }
 
 fn init() {
@@ -30,9 +27,9 @@ fn end() {
 }
 
 fn draw_rows() {
-    let config = Config::get();
-    let rows = config.screen_rows();
-    let cols = config.screen_cols() as usize;
+    let config      = Config::get();
+    let rows        = config.screen_rows();
+    let cols        = config.screen_cols() as usize;
     let message_row = rows / 3;
 
     //before welcome message
@@ -46,11 +43,9 @@ fn draw_rows() {
     print!("~");
     let mut welcome = "kilo editor written in rust -- version 0.0.1";
     let welcome_len = cmp::min(welcome.len(), cols);
-    welcome = &welcome[..welcome_len];
-    let padding = (cols - 1 - welcome_len) / 2;
-    for _ in 0..padding {
-        print!(" ");
-    }
+    welcome         = &welcome[..welcome_len];
+    let padding     = (cols - 1 - welcome_len) / 2;
+    for _ in 0..padding { print!(" ") }
     print!("{}", welcome);
     print!("\x1b[K"); //clear line
     print!("\r\n");
@@ -61,7 +56,7 @@ fn draw_rows() {
         print!("\x1b[K"); //clear line
         print!("\r\n");
     }
-    
+
     //last line
     print!("~");
     print!("\x1b[K"); //clear line
@@ -82,24 +77,16 @@ fn refresh_screen() {
 fn process_keypress() {
     let input = read_key();
     match input {
-        Key::Quit => {
-            clean_screen();
-            flush();
-            end();
-            process::exit(0)
-        },
-        Key::ArrowUp | Key::ArrowDown | Key::ArrowLeft | Key::ArrowRight => move_cursor(input),
-        Key::PageUp => {
-            for _ in 0..distance_from_top() {
-                move_cursor(Key::ArrowUp)
-            }
-        },
-        Key::PageDown => {
-            for _ in 0..distance_from_bottom() {
-                move_cursor(Key::ArrowDown)
-            }
-        },
-        _ => {}
+        Key::ArrowUp   |
+        Key::ArrowDown |
+        Key::ArrowLeft |
+        Key::ArrowRight => { move_cursor(input)                                                  },
+        Key::Quit       => { clean_screen(); flush(); end(); process::exit(0)                    },
+        Key::PageUp     => { for _ in 0..distance_from_top()    {  move_cursor(Key::ArrowUp  ) } },
+        Key::PageDown   => { for _ in 0..distance_from_bottom() { move_cursor(Key::ArrowDown ) } },
+        Key::Home       => { unsafe { CURSOR.x = Config::get().screen_zero()                   } },
+        Key::End        => { unsafe { CURSOR.x = Config::get().screen_cols() - 1               } },
+        _               => {}
     }
 }
 
@@ -108,45 +95,50 @@ fn read_key() -> Key {
         let mut stdin = io::stdin();
         loop {
             match stdin.read(buff) {
-                Ok(1) => return buff[0],
-                Ok(_) => continue,
-                Err(err) => {
-                    end();
-                    die(DieReason::Panic(err.to_string()))
-                }
+                Ok(1)          => { return buff[0]                                },
+                Ok(_)          => { continue                                      },
+                Err(err)       => { end(); die(DieReason::Panic(err.to_string())) },
             }
         }
     }
 
     let mut buff = [0u8; 1];
-    let byte = read_byte(&mut buff);
-    if byte == ctrl_key(b'q') {
-        return Key::Quit
-    }
+    let byte     = read_byte(&mut buff);
+    
+    if byte == ctrl_key(b'q') { return Key::Quit }
     if byte == b'\x1b' {
         let mut seq = [0u8; 3];
-        if read_byte(&mut seq[0..1]) == b'[' {
-            match read_byte(&mut seq[1..2]) {
-                b'A' => return Key::ArrowUp, 
-                b'B' => return Key::ArrowDown, 
-                b'C' => return Key::ArrowRight, 
-                b'D' => return Key::ArrowLeft,
-                b'5' => {
-                    if read_byte(&mut seq[1..2]) == b'~' { return Key::PageUp }
-                    return Key::ESC
-                },
-                b'6' => {
-                    if read_byte(&mut seq[1..2]) == b'~' { return Key::PageDown }
-                    return Key::ESC
-                },
-                _    => return Key::ESC,
-            }
-        } else {
-            return Key::ESC
+        match read_byte(&mut seq[0..1]) {
+            b'[' =>  {
+                match read_byte(&mut seq[1..2]) {
+                    b'1' => { if read_byte(&mut seq[2..3]) == b'~' { return Key::Home     } return Key::ESC },
+                    b'3' => { if read_byte(&mut seq[2..3]) == b'~' { return Key::Delete   } return Key::ESC },
+                    b'4' => { if read_byte(&mut seq[2..3]) == b'~' { return Key::End      } return Key::ESC },
+                    b'5' => { if read_byte(&mut seq[2..3]) == b'~' { return Key::PageUp   } return Key::ESC },
+                    b'6' => { if read_byte(&mut seq[2..3]) == b'~' { return Key::PageDown } return Key::ESC },
+                    b'7' => { if read_byte(&mut seq[2..3]) == b'~' { return Key::Home     } return Key::ESC },
+                    b'8' => { if read_byte(&mut seq[2..3]) == b'~' { return Key::End      } return Key::ESC },
+                    b'A' => return Key::ArrowUp,
+                    b'B' => return Key::ArrowDown,
+                    b'C' => return Key::ArrowRight,
+                    b'D' => return Key::ArrowLeft,
+                    b'F' => return Key::End,
+                    b'H' => return Key::Home,
+                    _    => return Key::ESC,
+                }
+            },
+            b'O' => {
+                match read_byte(&mut seq[1..2]) {
+                    b'H' => return Key::Home,
+                    b'F' => return Key::End,
+                    _    => return Key::ESC
+                }
+            },
+            _ => return Key::ESC
         }
-    } else {
-        return Key::Char(byte)
     }
+
+    Key::Char(byte)
 }
 
 fn move_cursor(key: Key) {
@@ -172,8 +164,11 @@ enum Key {
     ArrowDown,
     ArrowRight,
     ArrowLeft,
+    Home,
+    End,
     PageUp,
     PageDown,
+    Delete,
     Quit,
     ESC
 }
