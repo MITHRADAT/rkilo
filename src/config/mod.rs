@@ -2,8 +2,9 @@ use std::{io::{self, Read}, mem, sync::OnceLock, str};
 use super::{common::*, logger::Logger};
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
-
+    
 pub struct Config {
+    screen_zero: u16,
     screen_rows: u16,
     screen_cols: u16,
     original_termios: libc::termios,
@@ -20,11 +21,12 @@ impl Config {
                 }
             }
             Config {
+                screen_zero: 0,
                 screen_rows: rows,
                 screen_cols: cols,
                 original_termios: unsafe {
                     termios.assume_init()
-                }
+                },
             }
         });
         config
@@ -61,6 +63,10 @@ impl Config {
         }
     }
 
+    pub fn screen_zero(&self) -> u16 {
+        self.screen_zero
+    }
+    
     pub fn screen_rows(&self) -> u16 {
         self.screen_rows
     }

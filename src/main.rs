@@ -1,4 +1,4 @@
-use std::{io::{self, Read}, cmp};
+use std::{io::{self, Read}, cmp, process};
 // use libc;
 
 mod logger;
@@ -8,18 +8,25 @@ mod common;
 use config::Config;
 use common::*;
 
+static mut CURSOR: Cursor = Cursor {
+    x: 0,
+    y: 0
+};
+
+struct Cursor {
+    x: u16,
+    y: u16
+}
+    
 fn main() {
    init();
     
     loop {
         refresh_screen();
-        match process_keypress() {
-            ProcessKeyResult::Continue => (),
-            ProcessKeyResult::Quit => break
-        }
+        process_keypress();
     }
 
-    end();
+    //end();
 }
 
 fn init() {
@@ -72,27 +79,42 @@ fn refresh_screen() {
     print!("\x1b[?25l"); //hide the cursor
     print!("\x1b[H"); //reposition the cursor
     draw_rows();
-    print!("\x1b[H"); //reposition the cursor
+    unsafe {
+        let cursor_position = format!("\x1b[{};{}H", CURSOR.y + 1, CURSOR.x + 1);
+        print!("{}", cursor_position);
+    }
     print!("\x1b[?25h"); //show the cursor
     flush();
 }
 
-fn process_keypress() -> ProcessKeyResult {
+fn process_keypress() {
     let input = read_key();
-    if input == ctrl_key(b'q') {
-        clean_screen();
-        flush();
-        return ProcessKeyResult::Quit
+    match input {
+        Key::Quit => {
+            clean_screen();
+            flush();
+            end();
+            process::exit(0)
+        },
+        Key::ArrowUp | Key::ArrowDown | Key::ArrowLeft | Key::ArrowRight => move_cursor(input),
+        _ => {}
     }
-    ProcessKeyResult::Continue
 }
 
-fn read_key() -> u8 {
+fn read_key() -> Key {
     let mut c = [0u8; 1];
     let mut stdin = io::stdin();
     loop {
         match stdin.read(&mut c) {
-            Ok(1) => return c[0],
+            Ok(1) => {
+                if c[0] == b'\x1b' {
+                    break
+                }
+                if c[0] == ctrl_key(b'q') {
+                    return Key::Quit
+                }
+                return Key::Char(c[0])
+            },
             Ok(_) => continue,
             Err(err) => {
                 end();
@@ -100,13 +122,63 @@ fn read_key() -> u8 {
             }
         }
     }
+    let mut seq = [0u8; 3];
+    match stdin.read(&mut seq[0..1]) {
+        Ok(1) => {
+            if seq[0] != b'[' {
+                return Key::ESC
+            }
+        },
+        Ok(_) => return Key::ESC,
+        Err(err) => {
+            end();
+            die(DieReason::Panic(err.to_string()))
+        }
+    }
+    
+    match stdin.read(&mut seq[1..2]) {
+        Ok(1) => {},
+        Ok(_) => return Key::ESC,
+        Err(err) => {
+            end();
+            die(DieReason::Panic(err.to_string()))
+        }
+    }
+
+    match seq[1] {
+        b'A' => return Key::ArrowUp, 
+        b'B' => return Key::ArrowDown, 
+        b'C' => return Key::ArrowRight, 
+        b'D' => return Key::ArrowLeft,
+        _    => {}
+    }
+    
+    return Key::ESC
 }
 
-enum ProcessKeyResult {
-    Continue,
-    Quit
+fn move_cursor(key: Key) {
+    let config = Config::get();
+    unsafe {
+        match key {
+            Key::ArrowUp    => { if CURSOR.y > config.screen_zero() { CURSOR.y -= 1 } },
+            Key::ArrowDown  => { if CURSOR.y < config.screen_rows() { CURSOR.y += 1 } },
+            Key::ArrowRight => { if CURSOR.x < config.screen_cols() { CURSOR.x += 1 } },
+            Key::ArrowLeft  => { if CURSOR.x > config.screen_zero() { CURSOR.x -= 1 } },
+            _               => {}
+        }
+    }
 }
 
 fn ctrl_key(c: u8) -> u8 {
     c & 0x1f
+}
+
+enum Key {
+    Char(u8),
+    ArrowUp,
+    ArrowDown,
+    ArrowRight,
+    ArrowLeft,
+    Quit,
+    ESC
 }
