@@ -4,19 +4,11 @@ use std::{io::{self, Read}, cmp, process};
 mod logger;
 mod config;
 mod common;
+mod cursor;
 
-use config::Config;
 use common::*;
-
-static mut CURSOR: Cursor = Cursor {
-    x: 0,
-    y: 0
-};
-
-struct Cursor {
-    x: u16,
-    y: u16
-}
+use cursor::*;
+use config::Config;
     
 fn main() {
    init();
@@ -97,63 +89,64 @@ fn process_keypress() {
             process::exit(0)
         },
         Key::ArrowUp | Key::ArrowDown | Key::ArrowLeft | Key::ArrowRight => move_cursor(input),
+        Key::PageUp => {
+            for _ in 0..distance_from_top() {
+                move_cursor(Key::ArrowUp)
+            }
+        },
+        Key::PageDown => {
+            for _ in 0..distance_from_bottom() {
+                move_cursor(Key::ArrowDown)
+            }
+        },
         _ => {}
     }
 }
 
 fn read_key() -> Key {
-    let mut c = [0u8; 1];
-    let mut stdin = io::stdin();
-    loop {
-        match stdin.read(&mut c) {
-            Ok(1) => {
-                if c[0] == b'\x1b' {
-                    break
+    fn read_byte(buff: &mut [u8]) -> u8 {
+        let mut stdin = io::stdin();
+        loop {
+            match stdin.read(buff) {
+                Ok(1) => return buff[0],
+                Ok(_) => continue,
+                Err(err) => {
+                    end();
+                    die(DieReason::Panic(err.to_string()))
                 }
-                if c[0] == ctrl_key(b'q') {
-                    return Key::Quit
-                }
-                return Key::Char(c[0])
-            },
-            Ok(_) => continue,
-            Err(err) => {
-                end();
-                die(DieReason::Panic(err.to_string()))
             }
-        }
-    }
-    let mut seq = [0u8; 3];
-    match stdin.read(&mut seq[0..1]) {
-        Ok(1) => {
-            if seq[0] != b'[' {
-                return Key::ESC
-            }
-        },
-        Ok(_) => return Key::ESC,
-        Err(err) => {
-            end();
-            die(DieReason::Panic(err.to_string()))
-        }
-    }
-    
-    match stdin.read(&mut seq[1..2]) {
-        Ok(1) => {},
-        Ok(_) => return Key::ESC,
-        Err(err) => {
-            end();
-            die(DieReason::Panic(err.to_string()))
         }
     }
 
-    match seq[1] {
-        b'A' => return Key::ArrowUp, 
-        b'B' => return Key::ArrowDown, 
-        b'C' => return Key::ArrowRight, 
-        b'D' => return Key::ArrowLeft,
-        _    => {}
+    let mut buff = [0u8; 1];
+    let byte = read_byte(&mut buff);
+    if byte == ctrl_key(b'q') {
+        return Key::Quit
     }
-    
-    return Key::ESC
+    if byte == b'\x1b' {
+        let mut seq = [0u8; 3];
+        if read_byte(&mut seq[0..1]) == b'[' {
+            match read_byte(&mut seq[1..2]) {
+                b'A' => return Key::ArrowUp, 
+                b'B' => return Key::ArrowDown, 
+                b'C' => return Key::ArrowRight, 
+                b'D' => return Key::ArrowLeft,
+                b'5' => {
+                    if read_byte(&mut seq[1..2]) == b'~' { return Key::PageUp }
+                    return Key::ESC
+                },
+                b'6' => {
+                    if read_byte(&mut seq[1..2]) == b'~' { return Key::PageDown }
+                    return Key::ESC
+                },
+                _    => return Key::ESC,
+            }
+        } else {
+            return Key::ESC
+        }
+    } else {
+        return Key::Char(byte)
+    }
 }
 
 fn move_cursor(key: Key) {
@@ -162,8 +155,8 @@ fn move_cursor(key: Key) {
         match key {
             Key::ArrowUp    => { if CURSOR.y > config.screen_zero() { CURSOR.y -= 1 } },
             Key::ArrowDown  => { if CURSOR.y < config.screen_rows() { CURSOR.y += 1 } },
-            Key::ArrowRight => { if CURSOR.x < config.screen_cols() { CURSOR.x += 1 } },
             Key::ArrowLeft  => { if CURSOR.x > config.screen_zero() { CURSOR.x -= 1 } },
+            Key::ArrowRight => { if CURSOR.x < config.screen_cols() { CURSOR.x += 1 } },
             _               => {}
         }
     }
@@ -179,6 +172,8 @@ enum Key {
     ArrowDown,
     ArrowRight,
     ArrowLeft,
+    PageUp,
+    PageDown,
     Quit,
     ESC
 }
