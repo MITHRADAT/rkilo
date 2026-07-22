@@ -1,4 +1,4 @@
-use std::{io::{self, Read}, cmp, process};
+use std::{io::{self, Read}, env, fs, cmp, process};
 
 mod logger;
 mod config;
@@ -9,9 +9,15 @@ use common::*;
 use cursor::*;
 use config::Config;
 
-fn main() {
-   init();
+static mut TEXT: Vec<String> = Vec::new();
 
+fn main() {
+    init();
+    
+    if let Some(path) = env::args().nth(1) {
+        read_file(&path)
+    }
+    
     loop {
         refresh_screen();
         process_keypress();
@@ -26,32 +32,53 @@ fn end() {
     Config::get().disable_raw_mode();
 }
 
-fn draw_rows() {
-    let config      = Config::get();
-    let rows        = config.screen_rows();
-    let cols        = config.screen_cols() as usize;
-    let message_row = rows / 3;
+#[allow(static_mut_refs)]
+fn read_file(path: &str) {
+    fs::read_to_string(path).unwrap_or_else(|err| {
+        end();
+        die(DieReason::Panic(err.to_string()))
+    })
+        .lines()
+        .for_each(|line| unsafe { TEXT.push(line.to_string()) })
+}
 
+#[allow(static_mut_refs)]
+fn draw_rows() {
+    let config = Config::get();
+    let rows = config.screen_rows() as usize;
+    let cols = config.screen_cols() as usize;
+    let welcome_row = (rows / 3) as usize;
+    let text_len = unsafe { TEXT.len() };
+
+    //show text
+    for i in 0..text_len {
+        unsafe { print!("{}", &TEXT[i]) }
+        print!("\x1b[K"); //clear line
+        print!("\r\n");
+    }
+    
     //before welcome message
-    for _ in 0..message_row {
+    for _ in text_len..welcome_row {
         print!("~");
         print!("\x1b[K"); //clear line
         print!("\r\n");
     }
 
     //welcome message
-    print!("~");
-    let mut welcome = "kilo editor written in rust -- version 0.0.1";
-    let welcome_len = cmp::min(welcome.len(), cols);
-    welcome         = &welcome[..welcome_len];
-    let padding     = (cols - 1 - welcome_len) / 2;
-    for _ in 0..padding { print!(" ") }
-    print!("{}", welcome);
-    print!("\x1b[K"); //clear line
-    print!("\r\n");
+    if text_len == 0 {
+        print!("~");
+        let mut welcome = "kilo editor written in rust -- version 0.0.1";
+        let welcome_len = cmp::min(welcome.len(), cols);
+        welcome = &welcome[..welcome_len];
+        let padding = (cols - 1 - welcome_len) / 2;
+        for _ in 0..padding { print!(" ") }
+        print!("{}", welcome);
+        print!("\x1b[K"); //clear line
+        print!("\r\n");
+    }
 
     //after welcome message
-    for _ in message_row + 1..rows - 1 {
+    for _ in welcome_row + 1..rows - 1 {
         print!("~");
         print!("\x1b[K"); //clear line
         print!("\r\n");
@@ -80,12 +107,12 @@ fn process_keypress() {
         Key::ArrowUp   |
         Key::ArrowDown |
         Key::ArrowLeft |
-        Key::ArrowRight => { move_cursor(input)                                                  },
-        Key::Quit       => { clean_screen(); flush(); end(); process::exit(0)                    },
-        Key::PageUp     => { for _ in 0..distance_from_top()    {  move_cursor(Key::ArrowUp  ) } },
-        Key::PageDown   => { for _ in 0..distance_from_bottom() { move_cursor(Key::ArrowDown ) } },
-        Key::Home       => { unsafe { CURSOR.x = Config::get().screen_zero()                   } },
-        Key::End        => { unsafe { CURSOR.x = Config::get().screen_cols() - 1               } },
+        Key::ArrowRight => { move_cursor(input) },
+        Key::Quit       => { clean_screen(); flush(); end(); process::exit(0) },
+        Key::PageUp     => { for _ in 0..distance_from_top()    { move_cursor(Key::ArrowUp)   } },
+        Key::PageDown   => { for _ in 0..distance_from_bottom() { move_cursor(Key::ArrowDown) } },
+        Key::Home       => { unsafe { CURSOR.x = Config::get().screen_zero()     } },
+        Key::End        => { unsafe { CURSOR.x = Config::get().screen_cols() - 1 } },
         _               => {}
     }
 }
@@ -95,9 +122,12 @@ fn read_key() -> Key {
         let mut stdin = io::stdin();
         loop {
             match stdin.read(buff) {
-                Ok(1)          => { return buff[0]                                },
-                Ok(_)          => { continue                                      },
-                Err(err)       => { end(); die(DieReason::Panic(err.to_string())) },
+                Ok(1) => return buff[0],
+                Ok(_) => continue,
+                Err(err) => {
+                    end();
+                    die(DieReason::Panic(err.to_string()))
+                },
             }
         }
     }
@@ -159,16 +189,16 @@ fn ctrl_key(c: u8) -> u8 {
 }
 
 enum Key {
-    Char(u8),
-    ArrowUp,
-    ArrowDown,
-    ArrowRight,
-    ArrowLeft,
-    Home,
-    End,
-    PageUp,
-    PageDown,
-    Delete,
-    Quit,
-    ESC
+    Char(u8)   ,
+    ArrowUp    ,
+    ArrowDown  ,
+    ArrowRight ,
+    ArrowLeft  ,
+    Home       ,
+    End        ,
+    PageUp     ,
+    PageDown   ,
+    Delete     ,
+    Quit       ,
+    ESC        ,
 }

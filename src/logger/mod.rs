@@ -6,17 +6,14 @@ pub struct Logger;
 impl Logger {
     pub fn log(text: &str) {
         let file_name = Local::now().format("%Y.%m.%d-%H").to_string();
-        let log_dir_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("log");
+        let log_dir_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("log");
         fs::create_dir_all(&log_dir_path).unwrap();
         let path = log_dir_path.join(file_name);
-        let mut file =  fs::OpenOptions::new()
+        let mut file = fs::OpenOptions::new()
             .create(true)
-            .read(true)
             .append(true)
             .open(path)
             .unwrap();
-        let minute = Local::now().minute();
-        writeln!(file, "minute({}): {}", minute, text).unwrap();
+        writeln!(file, "minute({}): {}", Local::now().minute(), text).unwrap();
     }
 }
