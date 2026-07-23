@@ -1,13 +1,17 @@
 use super::config::Config;
 
 pub static mut CURSOR: Cursor = Cursor {
-    x: 0,
-    y: 0
+    x        : 0,
+    y        : 0,
+    x_offset : 0,
+    y_offset : 0
 };
 
 pub struct Cursor {
-   pub x: u16,
-   pub y: u16
+    pub x        : u16,
+    pub y        : u16,
+    pub x_offset : u16,
+    pub y_offset : u16,
 }
 
 pub fn distance_from_top() -> u16 {

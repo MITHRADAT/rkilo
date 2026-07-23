@@ -47,54 +47,54 @@ fn draw_rows() {
     let config = Config::get();
     let rows = config.screen_rows() as usize;
     let cols = config.screen_cols() as usize;
-    let welcome_row = (rows / 3) as usize;
-    let text_len = unsafe { TEXT.len() };
-
-    //show text
-    for i in 0..text_len {
-        unsafe { print!("{}", &TEXT[i]) }
-        print!("\x1b[K"); //clear line
-        print!("\r\n");
-    }
+    let y_offset = unsafe { CURSOR.y_offset as usize };
+    let file_line_count = unsafe { TEXT.len() };
     
-    //before welcome message
-    for _ in text_len..welcome_row {
-        print!("~");
+    for screen_row in 0..rows {
+        let file_row = y_offset + screen_row;
+        if file_row < file_line_count {
+            unsafe { print!("{}", &TEXT[file_row]) }
+        } else if file_line_count < rows {
+            print!("~");
+            
+            //welcome message
+            if file_line_count == 0 && screen_row == (rows / 3) {
+                let mut welcome = "kilo editor written in rust -- version 0.0.1";
+                let welcome_len = cmp::min(welcome.len(), cols);
+                welcome = &welcome[..welcome_len];
+                let padding = (cols - 1 - welcome_len) / 2;
+                for _ in 0..padding { print!(" ") }
+                print!("{}", welcome);
+            }
+        }
+        
         print!("\x1b[K"); //clear line
-        print!("\r\n");
+        if screen_row < rows - 1 {
+            print!("\r\n");
+        }
     }
+}
 
-    //welcome message
-    if text_len == 0 {
-        print!("~");
-        let mut welcome = "kilo editor written in rust -- version 0.0.1";
-        let welcome_len = cmp::min(welcome.len(), cols);
-        welcome = &welcome[..welcome_len];
-        let padding = (cols - 1 - welcome_len) / 2;
-        for _ in 0..padding { print!(" ") }
-        print!("{}", welcome);
-        print!("\x1b[K"); //clear line
-        print!("\r\n");
+fn scroll() {
+    unsafe {
+        if CURSOR.y < CURSOR.y_offset {
+            CURSOR.y_offset = CURSOR.y
+        }
+        
+        let screen_rows = Config::get().screen_rows();
+        if CURSOR.y >= CURSOR.y_offset + screen_rows {
+            CURSOR.y_offset = CURSOR.y - screen_rows + 1;
+        }
     }
-
-    //after welcome message
-    for _ in welcome_row + 1..rows - 1 {
-        print!("~");
-        print!("\x1b[K"); //clear line
-        print!("\r\n");
-    }
-
-    //last line
-    print!("~");
-    print!("\x1b[K"); //clear line
 }
 
 fn refresh_screen() {
+    scroll();
     print!("\x1b[?25l"); //hide the cursor
     print!("\x1b[H"); //reposition the cursor
     draw_rows();
     unsafe {
-        let cursor_position = format!("\x1b[{};{}H", CURSOR.y + 1, CURSOR.x + 1);
+        let cursor_position = format!("\x1b[{};{}H", CURSOR.y - CURSOR.y_offset + 1, CURSOR.x + 1);
         print!("{}", cursor_position);
     }
     print!("\x1b[?25h"); //show the cursor
@@ -171,14 +171,15 @@ fn read_key() -> Key {
     Key::Char(byte)
 }
 
+#[allow(static_mut_refs)]
 fn move_cursor(key: Key) {
     let config = Config::get();
     unsafe {
         match key {
-            Key::ArrowUp    => { if CURSOR.y > config.screen_zero() { CURSOR.y -= 1 } },
-            Key::ArrowDown  => { if CURSOR.y < config.screen_rows() { CURSOR.y += 1 } },
-            Key::ArrowLeft  => { if CURSOR.x > config.screen_zero() { CURSOR.x -= 1 } },
-            Key::ArrowRight => { if CURSOR.x < config.screen_cols() { CURSOR.x += 1 } },
+            Key::ArrowUp    => { if CURSOR.y > config.screen_zero()  { CURSOR.y -= 1 } },
+            Key::ArrowDown  => { if CURSOR.y < TEXT.len() as u16 - 1 { CURSOR.y += 1 } },
+            Key::ArrowLeft  => { if CURSOR.x > config.screen_zero()  { CURSOR.x -= 1 } },
+            Key::ArrowRight => { if CURSOR.x < config.screen_cols()  { CURSOR.x += 1 } },
             _               => {}
         }
     }
