@@ -46,12 +46,12 @@ fn read_file(path: &str) {
 fn draw_rows() {
     let config = Config::get();
     let rows = config.screen_rows() as usize;
-    let cols = config.screen_cols() as usize;
     let y_offset = unsafe { CURSOR.y_offset as usize };
     let file_line_count = unsafe { TEXT.len() };
+    let mut file_row;
     
     for screen_row in 0..rows {
-        let file_row = y_offset + screen_row;
+        file_row = y_offset + screen_row;
         if file_row < file_line_count {
             unsafe { print!("{}", &TEXT[file_row]) }
         } else if file_line_count < rows {
@@ -59,6 +59,7 @@ fn draw_rows() {
             
             //welcome message
             if file_line_count == 0 && screen_row == (rows / 3) {
+                let cols = config.screen_cols() as usize;
                 let mut welcome = "kilo editor written in rust -- version 0.0.1";
                 let welcome_len = cmp::min(welcome.len(), cols);
                 welcome = &welcome[..welcome_len];
@@ -176,11 +177,20 @@ fn move_cursor(key: Key) {
     let config = Config::get();
     unsafe {
         match key {
-            Key::ArrowUp    => { if CURSOR.y > config.screen_zero()  { CURSOR.y -= 1 } },
-            Key::ArrowDown  => { if CURSOR.y < TEXT.len() as u16 - 1 { CURSOR.y += 1 } },
-            Key::ArrowLeft  => { if CURSOR.x > config.screen_zero()  { CURSOR.x -= 1 } },
-            Key::ArrowRight => { if CURSOR.x < config.screen_cols()  { CURSOR.x += 1 } },
-            _               => {}
+            Key::ArrowUp => {
+                if CURSOR.y > config.screen_zero()  { CURSOR.y -= 1 }
+            },
+            Key::ArrowDown => {
+                let max_y = cmp::max(TEXT.len(), Config::get().screen_rows()) - 1;
+                if CURSOR.y < max_y { CURSOR.y += 1 }
+            },
+            Key::ArrowLeft => {
+                if CURSOR.x > config.screen_zero()  { CURSOR.x -= 1 }
+            },
+            Key::ArrowRight => {
+                if CURSOR.x < config.screen_cols()  { CURSOR.x += 1 }
+            },
+            _ => {}
         }
     }
 }

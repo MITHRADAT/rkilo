@@ -5,9 +5,9 @@ use super::{common::*, logger::Logger};
 static CONFIG: OnceLock<Config> = OnceLock::new();
     
 pub struct Config {
-    screen_zero     : u16,
-    screen_rows     : u16,
-    screen_cols     : u16,
+    screen_zero     : usize,
+    screen_rows     : usize,
+    screen_cols     : usize,
     original_termios: libc::termios,
 }
 
@@ -64,12 +64,12 @@ impl Config {
         }
     }
 
-    pub fn screen_zero(&self) -> u16 { self.screen_zero }
-    pub fn screen_rows(&self) -> u16 { self.screen_rows }
-    pub fn screen_cols(&self) -> u16 { self.screen_cols }
+    pub fn screen_zero(&self) -> usize { self.screen_zero }
+    pub fn screen_rows(&self) -> usize { self.screen_rows }
+    pub fn screen_cols(&self) -> usize { self.screen_cols }
 }
 
-fn window_size() -> (u16, u16) {
+fn window_size() -> (usize, usize) {
     let mut window = mem::MaybeUninit::<libc::winsize>::uninit();
     unsafe {
         if libc::ioctl(
@@ -80,14 +80,14 @@ fn window_size() -> (u16, u16) {
             if win.ws_row > 0 && win.ws_col > 0 {
                 Logger::log(
                     format!("window size: ({}, {})", win.ws_row, win.ws_col).as_str());
-                return (win.ws_row, win.ws_col)
+                return (win.ws_row as usize, win.ws_col as usize)
             }
         }
     }
     cursor_position()
 }
 
-fn cursor_position() -> (u16, u16) {
+fn cursor_position() -> (usize, usize) {
     print!("\x1b[999C\x1b[999B"); //go 999 times forward and 999 times downward 
     print!("\x1b[6n"); //Device Status Report(DSR); get cursor position
     flush();
@@ -110,11 +110,11 @@ fn cursor_position() -> (u16, u16) {
         die(DieReason::Panic(format!(
             "cant split the row and col from cursor position. response: {}", response)))
     });
-    let rows: u16 = rows.parse().unwrap_or_else(|_| {
+    let rows: usize = rows.parse().unwrap_or_else(|_| {
         die(DieReason::Panic(format!(
             "cant parse row from cursor position. response: {}", response)))
     });
-    let cols: u16 = cols.parse().unwrap_or_else(|_| {
+    let cols: usize = cols.parse().unwrap_or_else(|_| {
         die(DieReason::Panic(format!(
             "cant parse col from cursor position. response: {}", response)))
     });
