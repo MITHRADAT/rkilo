@@ -25,7 +25,26 @@ pub fn die(reason: DieReason) -> ! {
     }
 }
 
+pub fn ctrl_key(c: u8) -> u8 {
+    c & 0x1f
+}
+
 pub enum DieReason {
     Panic(String),
     FFI(String)
+}
+
+pub enum Key {
+    Char(u8)   ,
+    ArrowUp    ,
+    ArrowDown  ,
+    ArrowRight ,
+    ArrowLeft  ,
+    Home       ,
+    End        ,
+    PageUp     ,
+    PageDown   ,
+    Delete     ,
+    Quit       ,
+    ESC        ,
 }

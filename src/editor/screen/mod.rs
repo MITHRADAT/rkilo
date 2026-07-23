@@ -1,52 +1,46 @@
-use std::{io::{self, Read}, sync::OnceLock, str, mem};
-use super::{common::*, logger::Logger};
+use std::{io::{self, Read}, str, mem};
+use super::super::{common::*, logger::Logger};
 
-
-static CONFIG: OnceLock<Config> = OnceLock::new();
-    
-pub struct Config {
-    screen_zero     : usize,
-    screen_rows     : usize,
-    screen_cols     : usize,
+pub struct Screen {
+    zero            : usize,
+    rows            : usize,
+    cols            : usize,
     original_termios: libc::termios,
 }
 
-impl Config {
-    pub fn get() -> &'static Config {
-        let config = CONFIG.get_or_init(|| {
-            let (rows, cols) = window_size();
-            let mut termios = mem::MaybeUninit::<libc::termios>::uninit();
-            unsafe {
-                if libc::tcgetattr(libc::STDIN_FILENO, termios.as_mut_ptr()) == -1 {
-                    die(DieReason::FFI("tcgetattr Config::get()".to_string()))
-                }
+impl Screen {
+    pub fn get() -> Self {
+        let (rows, cols) = window_size();
+        let mut termios = mem::MaybeUninit::<libc::termios>::uninit();
+        unsafe {
+            if libc::tcgetattr(libc::STDIN_FILENO, termios.as_mut_ptr()) == -1 {
+                die(DieReason::FFI("tcgetattr Screen::get()".to_string()))
             }
-            Config {
-                screen_zero      : 0,
-                screen_rows      : rows,
-                screen_cols      : cols,
-                original_termios : unsafe { termios.assume_init() },
-            }
-        });
-        config
+        }
+        Screen {
+            zero      : 0,
+            rows      : rows,
+            cols      : cols,
+            original_termios : unsafe { termios.assume_init() },
+        }
     }
 
     pub fn enable_raw_mode(&self) {
-        let mut original_termios = self.original_termios;
-        original_termios.c_iflag &= !(libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON);
-        original_termios.c_oflag &= !libc::OPOST;
-        original_termios.c_lflag &= !(libc::ECHO | libc::ICANON | libc::IEXTEN | libc::ISIG);
-        original_termios.c_cflag |= libc::CS8;
-        original_termios.c_cc[libc::VMIN]  = 0;
-        original_termios.c_cc[libc::VTIME] = 1;
+        let mut raw_mode = self.original_termios;
+        raw_mode.c_iflag &= !(libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON);
+        raw_mode.c_oflag &= !libc::OPOST;
+        raw_mode.c_lflag &= !(libc::ECHO | libc::ICANON | libc::IEXTEN | libc::ISIG);
+        raw_mode.c_cflag |= libc::CS8;
+        raw_mode.c_cc[libc::VMIN]  = 0;
+        raw_mode.c_cc[libc::VTIME] = 1;
         unsafe {
             if libc::tcsetattr(
                 libc::STDIN_FILENO,
                 libc::TCSAFLUSH   ,
-                &original_termios)
+                &raw_mode)
                 == -1 {
                     die(DieReason::FFI(
-                        "tcsetattr in Config::enable_raw_mode()".to_string()))
+                        "tcsetattr in Screen::enable_raw_mode()".to_string()))
                 }
         }
     }
@@ -59,14 +53,14 @@ impl Config {
                 &self.original_termios)
                 == -1 {
                     die(DieReason::FFI(
-                        "tcsetattr in Config::disable_raw_mode()".to_string()))
+                        "tcsetattr in Screen::disable_raw_mode()".to_string()))
                 }
         }
     }
 
-    pub fn screen_zero(&self) -> usize { self.screen_zero }
-    pub fn screen_rows(&self) -> usize { self.screen_rows }
-    pub fn screen_cols(&self) -> usize { self.screen_cols }
+    pub fn zero(&self) -> usize { self.zero }
+    pub fn rows(&self) -> usize { self.rows }
+    pub fn cols(&self) -> usize { self.cols }
 }
 
 fn window_size() -> (usize, usize) {
@@ -118,6 +112,6 @@ fn cursor_position() -> (usize, usize) {
         die(DieReason::Panic(format!(
             "cant parse col from cursor position. response: {}", response)))
     });
-    
+
     (rows, cols)
 }
