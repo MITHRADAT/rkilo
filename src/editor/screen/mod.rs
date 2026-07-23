@@ -72,8 +72,8 @@ fn window_size() -> (usize, usize) {
             window.as_mut_ptr()) >= 0 {
             let win = window.assume_init();
             if win.ws_row > 0 && win.ws_col > 0 {
-                Logger::log(
-                    format!("window size: ({}, {})", win.ws_row, win.ws_col).as_str());
+                // Logger::log(
+                //     format!("window size: ({}, {})", win.ws_row, win.ws_col).as_str());
                 return (win.ws_row as usize, win.ws_col as usize)
             }
         }
