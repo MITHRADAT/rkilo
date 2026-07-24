@@ -3,6 +3,7 @@ pub struct Cursor {
     pub y        : usize,
     pub x_offset : usize,
     pub y_offset : usize,
+    pub horizon  : usize,
 }
 
 impl Cursor {
@@ -11,7 +12,8 @@ impl Cursor {
             x: 0,
             y: 0,
             x_offset: 0,
-            y_offset: 0
+            y_offset: 0,
+            horizon : 0,
         }
     }
 }

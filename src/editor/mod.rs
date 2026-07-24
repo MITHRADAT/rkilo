@@ -15,8 +15,6 @@ pub struct Editor {
 
 struct Text {
     lines: Vec<String>,
-    max_y: usize,
-    max_x: usize
 }
 
 impl Editor {
@@ -25,8 +23,6 @@ impl Editor {
         let editor = Self {
             text  : Text {
                 lines: vec![],
-                max_y: screen.rows() - 1,
-                max_x: screen.rows() - 1,
             },
             cursor: Cursor::get(),
             screen: screen,
@@ -48,8 +44,6 @@ impl Editor {
             .lines()
             .for_each(|line|  {
                 self.text.lines.push(line.to_string());
-                self.text.max_x = cmp::max(line.len(), self.text.max_x + 1) - 1;
-                self.text.max_y = cmp::max(self.screen.rows(), self.text.lines.len()) - 1;
             })
     }
 
@@ -191,12 +185,50 @@ impl Editor {
         }
     }
 
+    fn max_x(&self) -> usize {
+        if self.text.lines.len() > self.cursor.y {
+            self.text.lines[self.cursor.y].len()
+        } else {
+            0
+        }
+    }
+
+    fn max_y(&self) -> usize {
+        cmp::max(self.text.lines.len(), self.screen.rows()) - 1
+    }
+
+    fn adjust_horizon(&mut self) {
+        self.cursor.x = cmp::min(self.cursor.x, self.max_x()) //consider horizon
+    }
+
     fn move_cursor(&mut self, key: Key) {
         match key {
-            Key::ArrowUp    => { if self.cursor.y > self.screen.zero() { self.cursor.y -= 1 } },
-            Key::ArrowDown  => { if self.cursor.y < self.text.max_y    { self.cursor.y += 1 } },
-            Key::ArrowLeft  => { if self.cursor.x > self.screen.zero() { self.cursor.x -= 1 } },
-            Key::ArrowRight => { if self.cursor.x < self.text.max_x    { self.cursor.x += 1 } },
+            Key::ArrowUp => {
+                if self.cursor.y > self.screen.zero() {
+                    self.cursor.y -= 1;
+                    self.adjust_horizon()
+                }
+            },
+            Key::ArrowDown => {
+                if self.cursor.y < self.max_y() {
+                    self.cursor.y += 1;
+                    self.adjust_horizon()
+                }
+            },
+            Key::ArrowLeft => {
+                if self.cursor.x > self.screen.zero() {
+                    self.cursor.x -= 1;
+                } else {
+                    self.move_cursor(Key::ArrowUp)
+                }
+            },
+            Key::ArrowRight => {
+                if self.cursor.x < self.max_x() {
+                    self.cursor.x += 1
+                } else {
+                    self.move_cursor(Key::ArrowDown)
+                }
+            },
             _ => {}
         }
     }
