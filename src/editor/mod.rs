@@ -42,7 +42,7 @@ impl Editor {
             die(DieReason::Panic(err.to_string()))
         })
             .lines()
-            .for_each(|line|  {
+            .for_each(|line| {
                 self.text.lines.push(line.to_string());
             })
     }
@@ -193,41 +193,37 @@ impl Editor {
         }
     }
 
-    fn max_y(&self) -> usize {
-        cmp::max(self.text.lines.len(), self.screen.rows()) - 1
-    }
-
-    fn adjust_horizon(&mut self) {
-        self.cursor.x = cmp::min(self.cursor.x, self.max_x()) //consider horizon
-    }
-
     fn move_cursor(&mut self, key: Key) {
         match key {
             Key::ArrowUp => {
                 if self.cursor.y > self.screen.zero() {
                     self.cursor.y -= 1;
-                    self.adjust_horizon()
                 }
+                self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
             Key::ArrowDown => {
-                if self.cursor.y < self.max_y() {
+                if self.cursor.y < self.text.lines.len() - 1 {
                     self.cursor.y += 1;
-                    self.adjust_horizon()
                 }
+                self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
             Key::ArrowLeft => {
                 if self.cursor.x > self.screen.zero() {
                     self.cursor.x -= 1;
-                } else {
-                    self.move_cursor(Key::ArrowUp)
+                } else if self.cursor.y > self.screen.zero() {
+                    self.cursor.y -= 1;
+                    self.cursor.x = cmp::max(self.cursor.x, self.max_x());
                 }
+                self.cursor.horizon = self.cursor.x;
             },
             Key::ArrowRight => {
                 if self.cursor.x < self.max_x() {
-                    self.cursor.x += 1
-                } else {
-                    self.move_cursor(Key::ArrowDown)
+                    self.cursor.x += 1;
+                } else if self.cursor.y < self.text.lines.len() - 1 {
+                    self.cursor.y += 1;
+                    self.cursor.x = 0;
                 }
+                self.cursor.horizon = self.cursor.x;
             },
             _ => {}
         }
