@@ -2,7 +2,6 @@ use std::{io::{self, Read}, str, mem};
 use super::super::{common::*, logger::Logger};
 
 pub struct Screen {
-    zero            : usize,
     rows            : usize,
     cols            : usize,
     original_termios: libc::termios,
@@ -18,7 +17,6 @@ impl Screen {
             }
         }
         Screen {
-            zero      : 0,
             rows      : rows,
             cols      : cols,
             original_termios : unsafe { termios.assume_init() },
@@ -58,7 +56,6 @@ impl Screen {
         }
     }
 
-    pub fn zero(&self) -> usize { self.zero }
     pub fn rows(&self) -> usize { self.rows }
     pub fn cols(&self) -> usize { self.cols }
 }

@@ -70,8 +70,8 @@ impl Editor {
             Key::Quit       => { clean_screen(); flush(); self.end(); process::exit(0) },
             Key::PageUp     => { for _ in 0..self.distance_from_top()    { self.move_cursor(Key::ArrowUp)   } },
             Key::PageDown   => { for _ in 0..self.distance_from_bottom() { self.move_cursor(Key::ArrowDown) } },
-            Key::Home       => { self.cursor.x = self.screen.zero()      },
-            Key::End        => { self.cursor.x = self.screen.cols() - 1  },
+            Key::Home       => { self.cursor.x = 0; self.cursor.horizon = 0; },
+            Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x;  },
             _               => {}
         }
     }
@@ -196,21 +196,21 @@ impl Editor {
     fn move_cursor(&mut self, key: Key) {
         match key {
             Key::ArrowUp => {
-                if self.cursor.y > self.screen.zero() {
+                if self.cursor.y > 0 {
                     self.cursor.y -= 1;
                 }
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
             Key::ArrowDown => {
-                if self.cursor.y < self.text.lines.len() - 1 {
+                if self.cursor.y + 1 < self.text.lines.len() {
                     self.cursor.y += 1;
                 }
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
             Key::ArrowLeft => {
-                if self.cursor.x > self.screen.zero() {
+                if self.cursor.x > 0 {
                     self.cursor.x -= 1;
-                } else if self.cursor.y > self.screen.zero() {
+                } else if self.cursor.y > 0 {
                     self.cursor.y -= 1;
                     self.cursor.x = cmp::max(self.cursor.x, self.max_x());
                 }
@@ -219,7 +219,7 @@ impl Editor {
             Key::ArrowRight => {
                 if self.cursor.x < self.max_x() {
                     self.cursor.x += 1;
-                } else if self.cursor.y < self.text.lines.len() - 1 {
+                } else if self.cursor.y + 1 < self.text.lines.len() {
                     self.cursor.y += 1;
                     self.cursor.x = 0;
                 }
