@@ -14,7 +14,12 @@ pub struct Editor {
 }
 
 struct Text {
-    lines: Vec<String>,
+    lines: Vec<Line>,
+}
+
+struct Line {
+    chars : String,
+    render: String
 }
 
 impl Editor {
@@ -43,7 +48,7 @@ impl Editor {
         })
             .lines()
             .for_each(|line| {
-                self.text.lines.push(line.to_string());
+                self.add_new_line(line);
             })
     }
 
@@ -160,9 +165,9 @@ impl Editor {
             if file_row < self.text.lines.len() {
                 let line = &self.text.lines[file_row];
                 let start = self.cursor.x_offset;
-                if start < line.len() {
-                    let end = cmp::min(line.len(), start + self.screen.cols());
-                    print!("{}", &line[start..end])
+                if start < line.render.len() {
+                    let end = cmp::min(line.render.len(), start + self.screen.cols());
+                    print!("{}", &line.render[start..end])
                 }
             } else if self.text.lines.len() < self.screen.rows() {
                 print!("~");
@@ -187,7 +192,7 @@ impl Editor {
 
     fn max_x(&self) -> usize {
         if self.text.lines.len() > self.cursor.y {
-            self.text.lines[self.cursor.y].len()
+            self.text.lines[self.cursor.y].render.len()
         } else {
             0
         }
@@ -227,5 +232,29 @@ impl Editor {
             },
             _ => {}
         }
+    }
+
+    fn add_new_line(&mut self, chars: &str) {
+        let mut render = String::new();
+        let mut index = 0 as usize;
+        for c in chars.chars() {
+            if c == '\t' {
+                loop {
+                    if index % self.cursor.tab_stop() == 0 { break }
+                    render.push(' ');
+                    index += 1;
+                }
+            } else {
+                render.push(c);
+                index += 1;
+            }
+        }
+
+        let new_line = Line {
+            chars: String::from(chars),
+            render: render
+        };
+
+        self.text.lines.push(new_line)
     }
 }

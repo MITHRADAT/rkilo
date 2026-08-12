@@ -4,6 +4,7 @@ pub struct Cursor {
     pub x_offset : usize,
     pub y_offset : usize,
     pub horizon  : usize,
+        tab_stop : usize,
 }
 
 impl Cursor {
@@ -14,6 +15,11 @@ impl Cursor {
             x_offset: 0,
             y_offset: 0,
             horizon : 0,
+            tab_stop: 8,
         }
+    }
+
+    pub fn tab_stop(&self) -> usize {
+        self.tab_stop
     }
 }
