@@ -59,7 +59,7 @@ impl Editor {
         self.draw_rows();
         let cursor_position = format!("\x1b[{};{}H",
                                       self.cursor.y - self.cursor.y_offset + 1,
-                                      self.cursor.x - self.cursor.x_offset + 1);
+                                      self.cursor.x_render - self.cursor.x_offset + 1);
         print!("{}", cursor_position);
         print!("\x1b[?25h"); //show the cursor
         flush();
@@ -141,6 +141,8 @@ impl Editor {
     }
 
     fn scroll(&mut self) {
+        self.cursor.x_render = self.x_render();
+
         if self.cursor.y < self.cursor.y_offset {
             self.cursor.y_offset = self.cursor.y
         }
@@ -149,12 +151,12 @@ impl Editor {
             self.cursor.y_offset = self.cursor.y - self.screen.rows() + 1;
         }
 
-        if self.cursor.x < self.cursor.x_offset {
-            self.cursor.x_offset = self.cursor.x
+        if self.cursor.x_render < self.cursor.x_offset {
+            self.cursor.x_offset = self.cursor.x_render
         }
 
-        if self.cursor.x >= self.cursor.x_offset + self.screen.cols() {
-            self.cursor.x_offset = self.cursor.x - self.screen.cols() + 1;
+        if self.cursor.x_render >= self.cursor.x_offset + self.screen.cols() {
+            self.cursor.x_offset = self.cursor.x_render - self.screen.cols() + 1;
         }
     }
 
@@ -192,7 +194,7 @@ impl Editor {
 
     fn max_x(&self) -> usize {
         if self.text.lines.len() > self.cursor.y {
-            self.text.lines[self.cursor.y].render.len()
+            self.text.lines[self.cursor.y].chars.len()
         } else {
             0
         }
@@ -256,6 +258,20 @@ impl Editor {
         };
 
         self.text.lines.push(new_line)
+    }
+
+    fn x_render(&self) -> usize {
+        let chars = self.text.lines[self.cursor.y].chars.as_bytes();
+        let mut x_render = 0 as usize;
+        for i in 0..self.cursor.x {
+            if chars[i] == b'\t' {
+                x_render += self.cursor.tab_stop() - (x_render % self.cursor.tab_stop())
+            } else {
+                x_render += 1
+            }
+        }
+
+        x_render
     }
 
 }
