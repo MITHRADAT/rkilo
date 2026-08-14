@@ -234,16 +234,16 @@ impl Editor {
         }
     }
 
-    fn add_new_line(&mut self, chars: &str) {
+    fn add_new_line(&mut self, line: &str) {
         let mut render = String::new();
         let mut index = 0 as usize;
-        for c in chars.chars() {
+        for c in line.chars() {
             if c == '\t' {
-                loop {
-                    if index % self.cursor.tab_stop() == 0 { break }
+                let spaces = self.cursor.tab_stop() - (index % self.cursor.tab_stop());
+                for _ in 0..spaces {
                     render.push(' ');
-                    index += 1;
                 }
+                index += spaces;
             } else {
                 render.push(c);
                 index += 1;
@@ -251,10 +251,11 @@ impl Editor {
         }
 
         let new_line = Line {
-            chars: String::from(chars),
+            chars: String::from(line),
             render: render
         };
 
         self.text.lines.push(new_line)
     }
+
 }
