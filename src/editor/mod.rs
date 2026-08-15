@@ -68,23 +68,18 @@ impl Editor {
     pub fn process_keypress(&mut self) {
         let input = self.read_key();
         match input {
-            Key::ArrowUp   |
-            Key::ArrowDown |
-            Key::ArrowLeft |
-            Key::ArrowRight => { self.move_cursor(input) },
+            Key::ArrowUp    |
+            Key::ArrowDown  |
+            Key::ArrowLeft  |
+            Key::ArrowRight |
+            Key::PageUp     |
+            Key::PageDown   => { self.move_cursor(input) },
             Key::Quit       => { clean_screen(); flush(); self.end(); process::exit(0) },
-            Key::PageUp     => { for _ in 0..self.distance_from_top()    { self.move_cursor(Key::ArrowUp)   } },
-            Key::PageDown   => { for _ in 0..self.distance_from_bottom() { self.move_cursor(Key::ArrowDown) } },
             Key::Home       => { self.cursor.x = 0; self.cursor.horizon = 0; },
             Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x;  },
             _               => {}
         }
     }
-
-    fn distance_from_top(&self)    -> usize {  self.cursor.y }
-    fn distance_from_bottom(&self) -> usize {  self.screen.rows() - self.cursor.y }
-    fn distance_from_left(&self)   -> usize {  self.cursor.x }
-    fn distance_from_right(&self)  -> usize {  self.screen.cols() - self.cursor.x }
 
     fn read_key(&self) -> Key {
         let mut buff = [0u8; 1];
@@ -232,6 +227,22 @@ impl Editor {
                 }
                 self.cursor.horizon = self.cursor.x;
             },
+            Key::PageUp => {
+                if self.cursor.y >= self.screen.rows() {
+                    self.cursor.y -= self.screen.rows()
+                } else {
+                    self.cursor.y = 0;
+                }
+                self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
+            },
+            Key::PageDown => {
+                if self.cursor.y + self.screen.rows() < self.text.lines.len() {
+                    self.cursor.y += self.screen.rows()
+                } else {
+                    self.cursor.y = self.text.lines.len().saturating_sub(1)
+                }
+                self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
+            }
             _ => {}
         }
     }
