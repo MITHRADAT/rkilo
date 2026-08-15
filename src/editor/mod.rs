@@ -136,7 +136,9 @@ impl Editor {
     }
 
     fn scroll(&mut self) {
-        self.cursor.x_render = self.x_render();
+        if self.text.lines.len() > self.cursor.y {
+            self.cursor.x_render = self.x_render();
+        }
 
         if self.cursor.y < self.cursor.y_offset {
             self.cursor.y_offset = self.cursor.y
@@ -214,7 +216,7 @@ impl Editor {
                     self.cursor.x -= 1;
                 } else if self.cursor.y > 0 {
                     self.cursor.y -= 1;
-                    self.cursor.x = cmp::max(self.cursor.x, self.max_x());
+                    self.cursor.x = self.max_x();
                 }
                 self.cursor.horizon = self.cursor.x;
             },
