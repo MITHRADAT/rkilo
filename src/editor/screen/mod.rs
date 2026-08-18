@@ -56,7 +56,7 @@ impl Screen {
         }
     }
 
-    pub fn rows(&self) -> usize { self.rows }
+    pub fn rows(&self) -> usize { self.rows - 1 }
     pub fn cols(&self) -> usize { self.cols }
 }
 

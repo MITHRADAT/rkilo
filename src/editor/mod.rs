@@ -57,6 +57,7 @@ impl Editor {
         print!("\x1b[?25l"); //hide the cursor
         print!("\x1b[H"); //reposition the cursor
         self.draw_rows();
+        self.draw_status_bar();
         let cursor_position = format!("\x1b[{};{}H",
                                       self.cursor.y - self.cursor.y_offset + 1,
                                       self.cursor.x_render - self.cursor.x_offset + 1);
@@ -183,10 +184,15 @@ impl Editor {
             }
 
             print!("\x1b[K"); //clear line
-            if screen_row < self.screen.rows() - 1 {
-                print!("\r\n");
-            }
+            print!("\r\n");
+            
         }
+    }
+
+    fn draw_status_bar(&self) {
+        print!("\x1b[7m"); //0: clear all attribute, 1: bold, 4: underscore, 5: blink, 7: inverted color
+        print!("status bar");
+        print!("\x1b[m"); //switch back to normal formatting, equal to x1b[0m
     }
 
     fn max_x(&self) -> usize {
