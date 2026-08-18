@@ -8,12 +8,13 @@ use screen::Screen;
 use super::common::*;
 
 pub struct Editor {
-    text  : Text,
+    file  : File,
     screen: Screen,
     cursor: Cursor,
 }
 
-struct Text {
+struct File {
+    name: Option<String>,
     lines: Vec<Line>,
 }
 
@@ -26,7 +27,8 @@ impl Editor {
     pub fn init() -> Self {
         let screen = Screen::get();
         let editor = Self {
-            text  : Text {
+            file  : File {
+                name: None,
                 lines: vec![],
             },
             cursor: Cursor::get(),
@@ -42,6 +44,7 @@ impl Editor {
     }
 
     pub fn read_file(&mut self, path: &str) {
+        self.file.name = Some(path.to_string());
         fs::read_to_string(path).unwrap_or_else(|err| {
             self.end();
             die(DieReason::Panic(err.to_string()))
@@ -137,7 +140,7 @@ impl Editor {
     }
 
     fn scroll(&mut self) {
-        if self.text.lines.len() > self.cursor.y {
+        if self.file.lines.len() > self.cursor.y {
             self.cursor.x_render = self.x_render();
         }
 
@@ -162,18 +165,18 @@ impl Editor {
         let mut file_row;
         for screen_row in 0..self.screen.rows() {
             file_row = self.cursor.y_offset + screen_row;
-            if file_row < self.text.lines.len() {
-                let line = &self.text.lines[file_row];
+            if file_row < self.file.lines.len() {
+                let line = &self.file.lines[file_row];
                 let start = self.cursor.x_offset;
                 if start < line.render.len() {
                     let end = cmp::min(line.render.len(), start + self.screen.cols());
                     print!("{}", &line.render[start..end])
                 }
-            } else if self.text.lines.len() < self.screen.rows() {
+            } else if self.file.lines.len() < self.screen.rows() {
                 print!("~");
 
                 //welcome message
-                if self.text.lines.len() == 0 && screen_row == (self.screen.rows() / 3) {
+                if self.file.lines.len() == 0 && screen_row == (self.screen.rows() / 3) {
                     let mut welcome = "kilo editor written in rust -- version 0.0.1";
                     let welcome_len = cmp::min(welcome.len(), self.screen.cols());
                     welcome = &welcome[..welcome_len];
@@ -185,19 +188,43 @@ impl Editor {
 
             print!("\x1b[K"); //clear line
             print!("\r\n");
-            
         }
     }
 
     fn draw_status_bar(&self) {
         print!("\x1b[7m"); //0: clear all attribute, 1: bold, 4: underscore, 5: blink, 7: inverted color
-        print!("status bar");
+
+        let mut display_name = String::from("scratch");
+        let mut current_line_number = String::from("");
+        if let Some(file_name) = &self.file.name {
+            if file_name.len() > 19 {
+                display_name = format!("{} - {} lines", &file_name[..19], self.file.lines.len());
+            } else {
+                display_name = format!("{} - {} lines", &file_name, self.file.lines.len());
+            }
+            current_line_number = format!("{}/{}", self.cursor.y + 1, self.file.lines.len());
+        }
+        if display_name.len() < self.screen.cols() {
+            print!("{}", display_name);
+        } else {
+            print!("{}", &display_name[..self.screen.cols()]);
+        }
+
+        for i in display_name.len()..self.screen.cols() {
+            if self.screen.cols() - i == current_line_number.len() {
+                print!("{}", current_line_number);
+                break;
+            } else {
+                print!(" ");
+            }
+        }
+
         print!("\x1b[m"); //switch back to normal formatting, equal to x1b[0m
     }
 
     fn max_x(&self) -> usize {
-        if self.text.lines.len() > self.cursor.y {
-            self.text.lines[self.cursor.y].chars.len()
+        if self.file.lines.len() > self.cursor.y {
+            self.file.lines[self.cursor.y].chars.len()
         } else {
             0
         }
@@ -212,7 +239,7 @@ impl Editor {
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
             Key::ArrowDown => {
-                if self.cursor.y + 1 < self.text.lines.len() {
+                if self.cursor.y + 1 < self.file.lines.len() {
                     self.cursor.y += 1;
                 }
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
@@ -229,7 +256,7 @@ impl Editor {
             Key::ArrowRight => {
                 if self.cursor.x < self.max_x() {
                     self.cursor.x += 1;
-                } else if self.cursor.y + 1 < self.text.lines.len() {
+                } else if self.cursor.y + 1 < self.file.lines.len() {
                     self.cursor.y += 1;
                     self.cursor.x = 0;
                 }
@@ -244,10 +271,10 @@ impl Editor {
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
             Key::PageDown => {
-                if self.cursor.y + self.screen.rows() < self.text.lines.len() {
+                if self.cursor.y + self.screen.rows() < self.file.lines.len() {
                     self.cursor.y += self.screen.rows()
                 } else {
-                    self.cursor.y = self.text.lines.len().saturating_sub(1)
+                    self.cursor.y = self.file.lines.len().saturating_sub(1)
                 }
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             }
@@ -276,11 +303,11 @@ impl Editor {
             render: render
         };
 
-        self.text.lines.push(new_line)
+        self.file.lines.push(new_line)
     }
 
     fn x_render(&self) -> usize {
-        let chars = self.text.lines[self.cursor.y].chars.as_bytes();
+        let chars = self.file.lines[self.cursor.y].chars.as_bytes();
         let mut x_render = 0 as usize;
         for i in 0..self.cursor.x {
             if chars[i] == b'\t' {
