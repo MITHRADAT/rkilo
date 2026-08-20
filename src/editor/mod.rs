@@ -23,7 +23,7 @@ struct File {
 
 struct Line {
     chars : Vec<char>,
-    render: String
+    render: Vec<char>
 }
 
 impl Editor {
@@ -175,7 +175,8 @@ impl Editor {
                 let start = self.cursor.x_offset;
                 if start < line.render.len() {
                     let end = cmp::min(line.render.len(), start + self.screen.cols());
-                    print!("{}", &line.render[start..end])
+                    let display_line: String = line.render[start..end].iter().collect();
+                    print!("{}", display_line)
                 }
             } else if self.file.lines.len() < self.screen.rows() {
                 print!("~");
@@ -305,7 +306,7 @@ impl Editor {
     }
 
     fn add_new_line(&mut self, line: &str) {
-        let mut render = String::new();
+        let mut render = vec![];
         let mut index = 0 as usize;
         for c in line.chars() {
             if c == '\t' {
