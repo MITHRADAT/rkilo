@@ -22,7 +22,7 @@ struct File {
 }
 
 struct Line {
-    chars : String,
+    chars : Vec<char>,
     render: String
 }
 
@@ -321,7 +321,7 @@ impl Editor {
         }
 
         let new_line = Line {
-            chars: String::from(line),
+            chars: line.chars().collect(),
             render: render
         };
 
@@ -329,10 +329,10 @@ impl Editor {
     }
 
     fn x_render(&self) -> usize {
-        let chars = self.file.lines[self.cursor.y].chars.as_bytes();
+        let chars = &self.file.lines[self.cursor.y].chars;
         let mut x_render = 0 as usize;
         for i in 0..self.cursor.x {
-            if chars[i] == b'\t' {
+            if chars[i] == '\t' {
                 x_render += self.cursor.tab_stop() - (x_render % self.cursor.tab_stop())
             } else {
                 x_render += 1
