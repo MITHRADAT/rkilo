@@ -2,11 +2,13 @@ use std::{io::{self, Read}, fs, cmp, process};
 
 mod cursor;
 mod screen;
+mod file;
 mod message_status;
 
 use cursor::Cursor;
 use screen::Screen;
 use message_status::MessageStatus;
+use file::*;
 use super::common::*;
 
 pub struct Editor {
@@ -14,16 +16,6 @@ pub struct Editor {
     screen: Screen,
     cursor: Cursor,
     message_status: MessageStatus
-}
-
-struct File {
-    name: Option<String>,
-    lines: Vec<Line>,
-}
-
-struct Line {
-    chars : Vec<char>,
-    render: Vec<char>
 }
 
 impl Editor {
@@ -85,7 +77,8 @@ impl Editor {
             Key::PageDown   => { self.move_cursor(input) },
             Key::Quit       => { clean_screen(); flush(); self.end(); process::exit(0) },
             Key::Home       => { self.cursor.x = 0; self.cursor.horizon = 0; },
-            Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x;  },
+            Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x; },
+            Key::Char(c)    => { self.write(c)}
             _               => {}
         }
     }
@@ -341,6 +334,24 @@ impl Editor {
         }
 
         x_render
+    }
+
+    fn write(&mut self, key: u8) {
+        if self.file.lines.len() > self.cursor.y {
+            let render_index = self.x_render();
+            let chars_index = self.cursor.x;
+            let line = &mut self.file.lines[self.cursor.y];
+            if line.chars.len() > chars_index {
+                line.insert(key as char, chars_index, render_index);
+            } else {
+                line.push(key as char);
+            }
+        } else {
+            let line: String = (key as char).into();
+            self.add_new_line(&line);
+        }
+
+        self.move_cursor(Key::ArrowRight);
     }
 
 }
