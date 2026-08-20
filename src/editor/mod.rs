@@ -2,15 +2,18 @@ use std::{io::{self, Read}, fs, cmp, process};
 
 mod cursor;
 mod screen;
+mod message_status;
 
 use cursor::Cursor;
 use screen::Screen;
+use message_status::MessageStatus;
 use super::common::*;
 
 pub struct Editor {
     file  : File,
     screen: Screen,
     cursor: Cursor,
+    message_status: MessageStatus
 }
 
 struct File {
@@ -31,6 +34,7 @@ impl Editor {
                 name: None,
                 lines: vec![],
             },
+            message_status: MessageStatus::new("Help: Ctrl-Q = quit"),
             cursor: Cursor::get(),
             screen: screen,
         };
@@ -61,6 +65,7 @@ impl Editor {
         print!("\x1b[H"); //reposition the cursor
         self.draw_rows();
         self.draw_status_bar();
+        self.draw_message_bar();
         let cursor_position = format!("\x1b[{};{}H",
                                       self.cursor.y - self.cursor.y_offset + 1,
                                       self.cursor.x_render - self.cursor.x_offset + 1);
@@ -220,6 +225,23 @@ impl Editor {
         }
 
         print!("\x1b[m"); //switch back to normal formatting, equal to x1b[0m
+        print!("\r\n");
+    }
+
+    fn draw_message_bar(&self) {
+        print!("\x1b[K"); //clear the line
+
+        let message = self.message_status.message()
+            .unwrap_or_else(|error| {
+                self.end();
+                die(DieReason::Panic(error.to_string()))
+            });
+
+        if message.len() > self.screen.cols() {
+            print!("{}", &message[..self.screen.cols()]);
+        } else {
+            print!("{}", message);
+        }
     }
 
     fn max_x(&self) -> usize {
