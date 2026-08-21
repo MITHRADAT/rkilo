@@ -78,6 +78,7 @@ impl Editor {
             Key::Quit       => { clean_screen(); flush(); self.end(); process::exit(0) },
             Key::Home       => { self.cursor.x = 0; self.cursor.horizon = 0; },
             Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x; },
+            Key::Save       => { self.save() }
             Key::Char(c)    => { self.write(c)}
             _               => {}
         }
@@ -88,6 +89,7 @@ impl Editor {
         let byte = self.read_byte(&mut buff);
 
         if byte == ctrl_key(b'q') { return Key::Quit }
+        if byte == ctrl_key(b's') { return Key::Save }
         if byte == b'\x1b' {
             let mut seq = [0u8; 3];
             match self.read_byte(&mut seq[0..1]) {
@@ -317,6 +319,7 @@ impl Editor {
         let new_line = Line {
             chars: line.chars().collect(),
             render: render,
+            original: line.as_bytes().to_vec(),
             dirty: false
         };
 
@@ -353,6 +356,24 @@ impl Editor {
         }
 
         self.move_cursor(Key::ArrowRight);
+    }
+
+    fn save(&mut self) {
+        let mut msg = String::new();
+
+        match self.file.save() {
+            SaveStatus::Successful => {
+                msg = format!("{} saved sucessfully!", &self.file.name.as_ref().unwrap())
+            },
+            SaveStatus::NoChanges => {
+                msg = format!("no changes to save!")
+            },
+            SaveStatus::Fail(error) => {
+                msg = format!("this error occured while saving: {}", error)
+            }
+        }
+
+        self.message_status.set(&msg);
     }
 
 }
