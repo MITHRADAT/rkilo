@@ -316,7 +316,8 @@ impl Editor {
 
         let new_line = Line {
             chars: line.chars().collect(),
-            render: render
+            render: render,
+            dirty: false
         };
 
         self.file.lines.push(new_line)
