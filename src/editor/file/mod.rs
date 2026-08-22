@@ -10,8 +10,7 @@ impl File {
         if self.name.is_some() {
             self.write_to_disk()
         } else {
-            self.request_name();
-            self.write_to_disk()
+            SaveStatus::NameRequest
         }
     }
 
@@ -96,5 +95,6 @@ impl Line {
 pub enum SaveStatus {
     NoChanges,
     Successful,
+    NameRequest,
     Fail(io::Error)
 }

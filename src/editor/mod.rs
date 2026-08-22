@@ -1,4 +1,4 @@
-use std::{io::{self, Read}, fs, cmp, process};
+use std::{io::{self, Read}, fs, cmp, process, time};
 
 mod cursor;
 mod screen;
@@ -11,11 +11,17 @@ use message_status::MessageStatus;
 use file::*;
 use super::common::*;
 
+enum InputMode {
+    Normal,
+    Prompt,
+}
+
 pub struct Editor {
     file  : File,
     screen: Screen,
     cursor: Cursor,
-    message_status: MessageStatus
+    message_status: MessageStatus,
+    input_mode: InputMode
 }
 
 impl Editor {
@@ -29,6 +35,7 @@ impl Editor {
             message_status: MessageStatus::new("Help: Ctrl-Q: quit, Ctrl-S: save"),
             cursor: Cursor::get(),
             screen: screen,
+            input_mode: InputMode::Normal
         };
 
         editor.screen.enable_raw_mode();
@@ -341,6 +348,14 @@ impl Editor {
     }
 
     fn write(&mut self, key: u8) {
+        match self.input_mode {
+            InputMode::Normal => self.write_normal(key),
+            InputMode::Prompt => self.write_prompt(key)
+        }
+
+    }
+
+    fn write_normal(&mut self, key: u8) {
         if self.file.lines.len() > self.cursor.y {
             let render_index = self.x_render();
             let chars_index = self.cursor.x;
@@ -358,22 +373,33 @@ impl Editor {
         self.move_cursor(Key::ArrowRight);
     }
 
-    fn save(&mut self) {
-        let mut msg = String::new();
+    fn write_prompt(&mut self, key: u8) {
+        self.message_status.set_prompt(key as char);
+    }
 
+    fn save(&mut self) {
         match self.file.save() {
             SaveStatus::Successful => {
-                msg = format!("{} saved sucessfully!", &self.file.name.as_ref().unwrap())
+                self.message_status.set_message(
+                    &format!("{} saved sucessfully!", &self.file.name.as_ref().unwrap()))
             },
             SaveStatus::NoChanges => {
-                msg = format!("no changes to save!")
+                self.message_status.set_message(
+                    &format!("no changes to save!"))
             },
+            SaveStatus::NameRequest => {
+                self.to_save()
+            }
             SaveStatus::Fail(error) => {
-                msg = format!("this error occured while saving: {}", error)
+                self.message_status.set_message(
+                    &format!("error occured while saving: {}", error))
             }
         }
+    }
 
-        self.message_status.set(&msg);
+    fn to_save(&mut self) {
+        self.message_status.set(&format!("file name to save: "), time::Duration::from_mins(1));
+        self.input_mode = InputMode::Prompt;
     }
 
 }
