@@ -69,12 +69,27 @@ impl Editor {
         self.draw_rows();
         self.draw_status_bar();
         self.draw_message_bar();
-        let cursor_position = format!("\x1b[{};{}H",
-                                      self.cursor.y - self.cursor.y_offset + 1,
-                                      self.cursor.x_render - self.cursor.x_offset + 1);
+        self.show_cursor();
+        flush();
+    }
+
+    fn show_cursor(&self) {
+        let mut cursor_position = String::new();
+        match self.input_mode {
+            InputMode::Normal => {
+                cursor_position = format!("\x1b[{};{}H",
+                                          self.cursor.y - self.cursor.y_offset + 1,
+                                          self.cursor.x_render - self.cursor.x_offset + 1);
+            },
+            InputMode::Prompt(_) => {
+                cursor_position = format!("\x1b[{};{}H",
+                                          self.screen.rows() + 2,
+                                          self.message_status.message().unwrap().len() + 1
+                )
+            }
+        }
         print!("{}", cursor_position);
         print!("\x1b[?25h"); //show the cursor
-        flush();
     }
 
     pub fn process_keypress(&mut self) {
