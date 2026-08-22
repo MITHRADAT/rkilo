@@ -346,7 +346,7 @@ impl Editor {
             let chars_index = self.cursor.x;
             let line = &mut self.file.lines[self.cursor.y];
             if line.chars.len() > chars_index {
-                line.insert(key as char, chars_index, render_index);
+                line.insert(key as char, chars_index, render_index, self.cursor.tab_stop());
             } else {
                 line.push(key as char);
             }

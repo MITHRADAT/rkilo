@@ -73,9 +73,16 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn insert(&mut self, c: char, chars_index: usize, render_index: usize) {
+    pub fn insert(&mut self, c: char, chars_index: usize, render_index: usize, tab_stop: usize) {
         self.chars.insert(chars_index, c);
-        self.render.insert(render_index, c);
+        if c == '\t' {
+            let spaces = tab_stop - (render_index % tab_stop);
+            for _ in 0..spaces {
+                self.render.insert(render_index, ' ');
+            }
+        } else {
+            self.render.insert(render_index, c);
+        }
         self.dirty = true;
     }
 
