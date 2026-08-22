@@ -11,10 +11,12 @@ use message_status::MessageStatus;
 use file::*;
 use super::common::*;
 
+#[derive(PartialEq)]
 enum PromptType {
     Save
 }
 
+#[derive(PartialEq)]
 enum InputMode {
     Normal,
     Prompt(PromptType),
@@ -84,7 +86,7 @@ impl Editor {
             InputMode::Prompt(_) => {
                 cursor_position = format!("\x1b[{};{}H",
                                           self.screen.rows() + 2,
-                                          self.message_status.message().unwrap().len() + 1
+                                          self.cursor.x + 1
                 )
             }
         }
@@ -168,6 +170,10 @@ impl Editor {
     }
 
     fn scroll(&mut self) {
+        if self.input_mode != InputMode::Normal {
+            return
+        }
+
         if self.file.lines.len() > self.cursor.y {
             self.cursor.x_render = self.x_render();
         }
@@ -277,6 +283,13 @@ impl Editor {
     }
 
     fn move_cursor(&mut self, key: Key) {
+        match self.input_mode {
+            InputMode::Normal => { self.move_cursor_normal(key) },
+            InputMode::Prompt(_) => { self.move_cursor_prompt(key) }
+        }
+    }
+
+    fn move_cursor_normal(&mut self, key: Key) {
         match key {
             Key::ArrowUp => {
                 if self.cursor.y > 0 {
@@ -328,6 +341,22 @@ impl Editor {
         }
     }
 
+    fn move_cursor_prompt(&mut self, key: Key) {
+        match key {
+            Key::ArrowLeft => {
+                if self.cursor.x > 0 {
+                    self.cursor.x -= 1;
+                }
+            },
+            Key::ArrowRight => {
+                if self.cursor.x < self.message_status.message().unwrap().len() {
+                    self.cursor.x += 1;
+                }
+            },
+            _ => {}
+        }
+    }
+
     fn add_new_line(&mut self, line: &str) {
         let mut render = vec![];
         let mut index = 0 as usize;
@@ -374,6 +403,7 @@ impl Editor {
             InputMode::Prompt(_) => self.write_prompt(key)
         }
 
+        self.move_cursor(Key::ArrowRight);
     }
 
     fn write_normal(&mut self, key: u8) {
@@ -391,7 +421,6 @@ impl Editor {
             self.add_new_line(&line);
         }
 
-        self.move_cursor(Key::ArrowRight);
     }
 
     fn write_prompt(&mut self, key: u8) {
@@ -425,7 +454,7 @@ impl Editor {
                 die(DieReason::Panic(err.to_string()))
             });
         self.message_status.set(&format!("file name to save: {}/", dir.display()), time::Duration::from_mins(1));
-        self.input_mode = InputMode::Prompt(PromptType::Save);
+        self.change_input_mode(InputMode::Prompt(PromptType::Save));
     }
 
     fn enter_pressed(&mut self) {
@@ -444,7 +473,21 @@ impl Editor {
             },
             InputMode::Normal => {}
         }
-        self.input_mode = InputMode::Normal;
+
+        self.change_input_mode(InputMode::Normal);
     }
 
+    fn change_input_mode(&mut self, target: InputMode) {
+        match target {
+            InputMode::Normal => {
+                self.cursor.x = self.cursor.x_normal;
+            },
+            InputMode::Prompt(_) => {
+                self.cursor.x_normal = self.cursor.x;
+                self.cursor.x = self.message_status.message().unwrap().len()
+            },
+        };
+
+        self.input_mode = target;
+    }
 }

@@ -5,7 +5,8 @@ pub struct Cursor {
     pub y_offset : usize,
     pub horizon  : usize,
         tab_stop : usize,
-    pub x_render: usize,
+    pub x_render : usize,
+    pub x_normal : usize,
 }
 
 impl Cursor {
@@ -18,6 +19,7 @@ impl Cursor {
             horizon : 0,
             tab_stop: 8,
             x_render: 0,
+            x_normal: 0,
         }
     }
 
