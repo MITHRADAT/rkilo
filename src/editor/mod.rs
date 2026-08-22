@@ -1,4 +1,4 @@
-use std::{io::{self, Read}, fs, cmp, process, time};
+use std::{io::{self, Read}, fs, cmp, process, time, env};
 
 mod cursor;
 mod screen;
@@ -404,7 +404,12 @@ impl Editor {
     }
 
     fn request_file_name(&mut self) {
-        self.message_status.set(&format!("file name to save: "), time::Duration::from_mins(1));
+        let dir = env::current_dir()
+            .unwrap_or_else(|err| {
+                self.end();
+                die(DieReason::Panic(err.to_string()))
+            });
+        self.message_status.set(&format!("file name to save: {}/", dir.display()), time::Duration::from_mins(1));
         self.input_mode = InputMode::Prompt(PromptType::Save);
     }
 
