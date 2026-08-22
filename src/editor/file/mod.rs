@@ -14,9 +14,8 @@ impl File {
         }
     }
 
-    fn request_name(&mut self) {
-        let file_name = String::new();
-        self.name = Some(file_name)
+    pub fn set_name(&mut self, name: String) {
+        self.name = Some(name)
     }
 
     fn write_to_disk(&mut self) -> SaveStatus {

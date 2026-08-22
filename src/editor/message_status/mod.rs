@@ -12,14 +12,15 @@ impl MessageStatus {
         Self {
             msg: String::from(msg),
             prompt: vec![],
-            timeout: time::Duration::from_secs(5),
+            timeout: MessageStatus::default_timeout(),
             init: time::SystemTime::now()
         }
     }
 
     pub fn set(&mut self, msg: &str, timeout: time::Duration) {
         self.set_message(msg);
-        self.set_timeout(timeout)
+        self.timeout = timeout;
+        self.init = time::SystemTime::now();
     }
 
     pub fn set_message(&mut self, msg: &str) {
@@ -27,30 +28,29 @@ impl MessageStatus {
         self.init = time::SystemTime::now()
     }
 
-    pub fn set_timeout(&mut self, timeout: time::Duration) {
-        self.timeout = timeout
-    }
-
-    pub fn timeout(&self) -> time::Duration {
-        self.timeout
-    }
-
     pub fn message(&self) -> Result<String, time::SystemTimeError> {
         if time::SystemTime::now()
-            .duration_since(self.init)?
-            < self.timeout() {
+            .duration_since(self.init)? < self.timeout {
                 let prompt: String = self.prompt.iter().collect();
                 return Ok(format!("{}{}", self.msg, prompt))
             }
         Ok(String::new())
     }
 
-    pub fn set_prompt(&mut self, c: char) {
+    pub fn push_prompt(&mut self, c: char) {
         self.prompt.push(c);
+        self.timeout = time::Duration::from_mins(1)
     }
 
-    pub fn empty_prompt(&mut self) {
-        self.prompt.clear()
+    pub fn take_prompt(&mut self) -> String {
+        let prompt: String = self.prompt.iter().collect();
+        self.prompt.clear();
+        self.timeout = MessageStatus::default_timeout();
+        prompt
+    }
+
+    fn default_timeout() -> time::Duration {
+        time::Duration::from_secs(5)
     }
 
 }

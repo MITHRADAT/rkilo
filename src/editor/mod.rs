@@ -11,9 +11,13 @@ use message_status::MessageStatus;
 use file::*;
 use super::common::*;
 
+enum PromptType {
+    Save
+}
+
 enum InputMode {
     Normal,
-    Prompt,
+    Prompt(PromptType),
 }
 
 pub struct Editor {
@@ -86,6 +90,7 @@ impl Editor {
             Key::Home       => { self.cursor.x = 0; self.cursor.horizon = 0; },
             Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x; },
             Key::Save       => { self.save() }
+            Key::Enter      => { self.enter_pressed() }
             Key::Char(c)    => { self.write(c)}
             _               => {}
         }
@@ -97,6 +102,7 @@ impl Editor {
 
         if byte == ctrl_key(b'q') { return Key::Quit }
         if byte == ctrl_key(b's') { return Key::Save }
+        if byte == b'\r'          { return Key::Enter }
         if byte == b'\x1b' {
             let mut seq = [0u8; 3];
             match self.read_byte(&mut seq[0..1]) {
@@ -350,7 +356,7 @@ impl Editor {
     fn write(&mut self, key: u8) {
         match self.input_mode {
             InputMode::Normal => self.write_normal(key),
-            InputMode::Prompt => self.write_prompt(key)
+            InputMode::Prompt(_) => self.write_prompt(key)
         }
 
     }
@@ -374,7 +380,7 @@ impl Editor {
     }
 
     fn write_prompt(&mut self, key: u8) {
-        self.message_status.set_prompt(key as char);
+        self.message_status.push_prompt(key as char);
     }
 
     fn save(&mut self) {
@@ -388,7 +394,7 @@ impl Editor {
                     &format!("no changes to save!"))
             },
             SaveStatus::NameRequest => {
-                self.to_save()
+                self.request_file_name()
             }
             SaveStatus::Fail(error) => {
                 self.message_status.set_message(
@@ -397,9 +403,28 @@ impl Editor {
         }
     }
 
-    fn to_save(&mut self) {
+    fn request_file_name(&mut self) {
         self.message_status.set(&format!("file name to save: "), time::Duration::from_mins(1));
-        self.input_mode = InputMode::Prompt;
+        self.input_mode = InputMode::Prompt(PromptType::Save);
+    }
+
+    fn enter_pressed(&mut self) {
+        match self.input_mode {
+            InputMode::Normal => { },
+            InputMode::Prompt(_) => { self.commit() }
+        }
+    }
+
+    fn commit(&mut self) {
+        match self.input_mode {
+            InputMode::Prompt(PromptType::Save) => {
+                let file_name = self.message_status.take_prompt();
+                self.file.set_name(file_name);
+                self.save()
+            },
+            InputMode::Normal => {}
+        }
+        self.input_mode = InputMode::Normal;
     }
 
 }

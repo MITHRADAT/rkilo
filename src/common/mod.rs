@@ -48,4 +48,5 @@ pub enum Key {
     Quit       ,
     ESC        ,
     Save       ,
+    Enter      ,
 }
