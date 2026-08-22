@@ -424,7 +424,7 @@ impl Editor {
     }
 
     fn write_prompt(&mut self, key: u8) {
-        self.message_status.push_prompt(key as char);
+        self.message_status.prompt_insert(key as char, self.cursor.x);
     }
 
     fn save(&mut self) {

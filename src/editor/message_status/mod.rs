@@ -37,8 +37,9 @@ impl MessageStatus {
         Ok(String::new())
     }
 
-    pub fn push_prompt(&mut self, c: char) {
-        self.prompt.push(c);
+    pub fn prompt_insert(&mut self, c: char, index: usize) {
+        let prompt_index = index - self.msg.len();
+        self.prompt.insert(prompt_index, c);
         self.timeout = time::Duration::from_mins(1)
     }
 
