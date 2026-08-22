@@ -26,7 +26,7 @@ impl Editor {
                 name: None,
                 lines: vec![],
             },
-            message_status: MessageStatus::new("Help: Ctrl-Q = quit"),
+            message_status: MessageStatus::new("Help: Ctrl-Q: quit, Ctrl-S: save"),
             cursor: Cursor::get(),
             screen: screen,
         };

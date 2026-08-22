@@ -31,7 +31,8 @@ impl File {
             let mut temp = fs::File::create(&temp_name)?;
 
             for line in &self.lines[..first_dirty] {
-                temp.write_all(&line.original)?
+                temp.write_all(&line.original)?;
+                temp.write_all(b"\n")?
             }
 
             let mut buffer = [0; 4];
@@ -40,6 +41,7 @@ impl File {
                     buffer = [0; 4];
                     temp.write_all(c.encode_utf8(&mut buffer).as_bytes())?
                 }
+                temp.write_all(b"\n")?
             }
 
             temp.sync_all()?;
