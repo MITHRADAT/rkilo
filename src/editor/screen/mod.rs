@@ -1,5 +1,5 @@
 use std::{io::{self, Read}, str, mem};
-use super::super::{common::*, logger::Logger};
+use super::super::common::*;
 
 pub struct Screen {
     rows            : usize,
@@ -34,7 +34,7 @@ impl Screen {
         unsafe {
             if libc::tcsetattr(
                 libc::STDIN_FILENO,
-                libc::TCSAFLUSH   ,
+                libc::TCSAFLUSH,
                 &raw_mode)
                 == -1 {
                     die(DieReason::FFI(
@@ -47,7 +47,7 @@ impl Screen {
         unsafe {
             if libc::tcsetattr(
                 libc::STDIN_FILENO,
-                libc::TCSAFLUSH   ,
+                libc::TCSAFLUSH,
                 &self.original_termios)
                 == -1 {
                     die(DieReason::FFI(

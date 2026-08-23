@@ -1,5 +1,6 @@
-use std::io::{self, Write};
+use std::{io::{self, Write}, process};
 use super::logger::Logger;
+
 
 pub fn flush() {
     io::stdout().flush().unwrap();
@@ -21,6 +22,9 @@ pub fn die(reason: DieReason) -> ! {
         DieReason::FFI(msg) => {
             Logger::log(format!("die by ffi:\r\n{}", msg).as_str());
             panic!("by foreign function interface: {}", msg)
+        },
+        DieReason::Quit => {
+            process::exit(0)
         }
     }
 }
@@ -31,7 +35,8 @@ pub fn ctrl_key(c: u8) -> u8 {
 
 pub enum DieReason {
     Panic(String),
-    FFI(String)
+    FFI(String),
+    Quit
 }
 
 pub enum Key {

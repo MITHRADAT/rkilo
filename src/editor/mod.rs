@@ -1,4 +1,4 @@
-use std::{io::{self, Read}, fs, cmp, process, time, env};
+use std::{io::{self, Read}, fs, cmp, time, env};
 
 mod cursor;
 mod screen;
@@ -48,15 +48,15 @@ impl Editor {
         editor
     }
 
-    fn end(&self) {
+    fn end(&self, reason: DieReason) -> ! {
         self.screen.disable_raw_mode();
+        die(reason)
     }
 
     pub fn read_file(&mut self, path: &str) {
         self.file.name = Some(path.to_string());
         fs::read_to_string(path).unwrap_or_else(|err| {
-            self.end();
-            die(DieReason::Panic(err.to_string()))
+            self.end(DieReason::Panic(err.to_string()))
         })
             .lines()
             .for_each(|line| {
@@ -103,7 +103,7 @@ impl Editor {
             Key::ArrowRight |
             Key::PageUp     |
             Key::PageDown   => { self.move_cursor(input) },
-            Key::Quit       => { clean_screen(); flush(); self.end(); process::exit(0) },
+            Key::Quit       => { self.end(DieReason::Quit) },
             Key::Home       => { self.cursor.x = 0; self.cursor.horizon = 0; },
             Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x; },
             Key::Save       => { self.save() }
@@ -162,8 +162,7 @@ impl Editor {
                 Ok(1) => return buff[0],
                 Ok(_) => continue,
                 Err(err) => {
-                    self.end();
-                    die(DieReason::Panic(err.to_string()))
+                    self.end(DieReason::Panic(err.to_string()))
                 },
             }
         }
@@ -263,8 +262,7 @@ impl Editor {
 
         let message = self.status_bar.message()
             .unwrap_or_else(|error| {
-                self.end();
-                die(DieReason::Panic(error.to_string()))
+                self.end(DieReason::Panic(error.to_string()))
             });
 
         if message.len() > self.screen.cols() {
@@ -432,8 +430,7 @@ impl Editor {
             SaveStatus::Successful => {
                 let file_name = &self.file.name.as_ref()
                     .unwrap_or_else(|| {
-                        self.end();
-                        die(DieReason::Panic("cant get the file name.".to_string()));
+                        self.end(DieReason::Panic("cant get the file name.".to_string()))
                     });
                 self.status_bar.set_message(
                     &format!("{} saved sucessfully!", file_name))
@@ -455,8 +452,7 @@ impl Editor {
     fn request_file_name(&mut self) {
         let dir = env::current_dir()
             .unwrap_or_else(|err| {
-                self.end();
-                die(DieReason::Panic(err.to_string()))
+                self.end(DieReason::Panic(err.to_string()))
             });
         self.status_bar.set(&format!("file name to save: {}/", dir.display()), time::Duration::from_mins(1));
         self.change_input_mode(InputMode::Prompt(PromptType::Save));
@@ -499,8 +495,7 @@ impl Editor {
     fn message(&self) -> String {
         self.status_bar.message()
             .unwrap_or_else(|err| {
-                self.end();
-                die(DieReason::Panic(err.to_string()))
+                self.end(DieReason::Panic(err.to_string()))
             })
     }
 }
