@@ -474,12 +474,21 @@ impl Editor {
 
     fn delete_pressed(&mut self) {
         match self.input_mode {
-            InputMode::Normal => { },
-            InputMode::Prompt(_) => {
-                let prompt_index = self.status_bar.prompt_index(self.cursor.x);
-                if prompt_index < self.status_bar.prompt_len() {
-                    self.status_bar.prompt_remove(prompt_index);
+            InputMode::Normal => {
+                let max_x = self.max_x();
+                if self.cursor.x == max_x && self.cursor.y + 1 == self.file.lines.len() {
+                    return
                 }
+                if self.cursor.x == max_x {
+                    //delete next line and merge it with current line like following line
+                    //self.file.merge_line(remove: self.cursor.y + 1, biggerline: self.cursor.y)
+                    //no need to move cursor
+                }
+                if self.cursor.x == max_x {
+                    //remove a char and render from line at cursor.x and cursor.y like following line
+                    //self.file.lines[self.cursor.y].remove(self.cursor.x)
+                }
+            },
             InputMode::Prompt(_) => {
                 self.status_bar.prompt_delete(self.cursor.x);
             }
@@ -488,7 +497,22 @@ impl Editor {
 
     fn backsapce_pressed(&mut self) {
         match self.input_mode {
-            InputMode::Normal => { },
+            InputMode::Normal => {
+                if self.cursor.x == 0 && self.cursor.y == 0 {
+                    return
+                }
+                if self.cursor.x == 0 {
+                    let cursor_y = self.cursor.y;
+                    self.move_cursor_normal(Key::ArrowLeft); //this also moves cursor.y
+                    //delete current line and merge it with upper line like following line
+                    //self.file.merge_line(remove: cursor_y, biggerline: self.cursor.y)
+                }
+                if self.cursor.x > 0 {
+                    //remove a char and render from line at cursor.x - 1 and cursor.y like following line
+                    //self.file.lines[self.cursor.y].remove(self.cursor.x - 1)
+                    self.move_cursor_normal(Key::ArrowLeft)
+                }
+            },
             InputMode::Prompt(_) => {
                 if self.status_bar.prompt_backspace(self.cursor.x).is_some() {
                     self.move_cursor_prompt(Key::ArrowLeft)
