@@ -43,14 +43,31 @@ impl StatusBar {
         self.init = time::SystemTime::now()
     }
 
-    pub fn prompt_remove(&mut self, index: usize) -> Option<char> {
+    pub fn prompt_delete(&mut self, cursor_x: usize) -> Option<char> {
         self.init = time::SystemTime::now();
+        let prompt_len = self.prompt.len();
+        if prompt_len == 0 {
+            return None
+        }
+        let prompt_index = self.prompt_index(cursor_x);
+        if prompt_index < prompt_len {
+            return Some(self.prompt.remove(prompt_index))
+        }
 
+        return None
+    }
+
+    pub fn prompt_backspace(&mut self, cursor_x: usize) -> Option<char> {
+        self.init = time::SystemTime::now();
         if self.prompt.len() == 0 {
             return None
         }
+        let prompt_index = self.prompt_index(cursor_x);
+        if prompt_index > 0 {
+            return Some(self.prompt.remove(prompt_index - 1))
+        }
 
-        return Some(self.prompt.remove(index));
+        return None
     }
 
     pub fn take_prompt(&mut self) -> String {

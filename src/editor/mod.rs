@@ -480,6 +480,8 @@ impl Editor {
                 if prompt_index < self.status_bar.prompt_len() {
                     self.status_bar.prompt_remove(prompt_index);
                 }
+            InputMode::Prompt(_) => {
+                self.status_bar.prompt_delete(self.cursor.x);
             }
         }
     }
@@ -488,15 +490,9 @@ impl Editor {
         match self.input_mode {
             InputMode::Normal => { },
             InputMode::Prompt(_) => {
-                if self.status_bar.prompt_remove(self.cursor.x, Key::BackSpace).is_some() {
+                if self.status_bar.prompt_backspace(self.cursor.x).is_some() {
                     self.move_cursor_prompt(Key::ArrowLeft)
                 }
-            InputMode::Prompt(_) => {
-                let prompt_index = self.status_bar.prompt_index(self.cursor.x);
-                if prompt_index > 0 &&
-                    self.status_bar.prompt_remove(prompt_index - 1).is_some() {
-                        self.move_cursor_prompt(Key::ArrowLeft)
-                    }
             }
         }
     }
