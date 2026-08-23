@@ -412,11 +412,11 @@ impl Editor {
 
     fn write_normal(&mut self, key: u8) {
         if self.file.lines.len() > self.cursor.y {
-            let render_index = self.x_render();
-            let chars_index = self.cursor.x;
+            let x_render = self.x_render();
+            let cursor_x = self.cursor.x;
             let line = &mut self.file.lines[self.cursor.y];
-            if line.chars.len() > chars_index {
-                line.insert(key as char, chars_index, render_index, self.cursor.tab_stop());
+            if line.chars.len() > cursor_x {
+                line.insert(key as char, cursor_x, x_render, self.cursor.tab_stop());
             } else {
                 line.push(key as char);
             }
@@ -476,7 +476,10 @@ impl Editor {
         match self.input_mode {
             InputMode::Normal => { },
             InputMode::Prompt(_) => {
-                self.status_bar.prompt_remove(self.cursor.x, Key::Delete);
+                let prompt_index = self.status_bar.prompt_index(self.cursor.x);
+                if prompt_index < self.status_bar.prompt_len() {
+                    self.status_bar.prompt_remove(prompt_index);
+                }
             }
         }
     }
@@ -488,6 +491,12 @@ impl Editor {
                 if self.status_bar.prompt_remove(self.cursor.x, Key::BackSpace).is_some() {
                     self.move_cursor_prompt(Key::ArrowLeft)
                 }
+            InputMode::Prompt(_) => {
+                let prompt_index = self.status_bar.prompt_index(self.cursor.x);
+                if prompt_index > 0 &&
+                    self.status_bar.prompt_remove(prompt_index - 1).is_some() {
+                        self.move_cursor_prompt(Key::ArrowLeft)
+                    }
             }
         }
     }

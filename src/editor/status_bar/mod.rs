@@ -43,30 +43,14 @@ impl StatusBar {
         self.init = time::SystemTime::now()
     }
 
-    pub fn prompt_remove(&mut self, cursor_x: usize, key: Key) -> Option<char> {
+    pub fn prompt_remove(&mut self, index: usize) -> Option<char> {
         self.init = time::SystemTime::now();
 
         if self.prompt.len() == 0 {
             return None
         }
 
-        let prompt_index = self.prompt_index(cursor_x);
-
-        match key {
-            Key::BackSpace => {
-                if prompt_index > 0 {
-                    return Some(self.prompt.remove(prompt_index - 1))
-                }
-            },
-            Key::Delete => {
-                if prompt_index < self.prompt.len() {
-                    return Some(self.prompt.remove(prompt_index))
-                }
-            },
-            _ => { }
-        }
-
-        return None
+        return Some(self.prompt.remove(index));
     }
 
     pub fn take_prompt(&mut self) -> String {
@@ -81,6 +65,10 @@ impl StatusBar {
             return cursor_x - self.msg.len()
         }
         return 0
+    }
+
+    pub fn prompt_len(&self) -> usize {
+        self.prompt.len()
     }
 
     pub fn set_timeout(&mut self, timeout: time::Duration) {
