@@ -348,7 +348,7 @@ impl Editor {
     fn move_cursor_prompt(&mut self, key: Key) {
         match key {
             Key::ArrowLeft => {
-                if self.cursor.x > 0 {
+                if self.status_bar.prompt_index(self.cursor.x) > 0 {
                     self.cursor.x -= 1;
                 }
             },
@@ -439,18 +439,18 @@ impl Editor {
                         self.end(DieReason::Panic("cant get the file name.".to_string()))
                     });
                 self.status_bar.set_message(
-                    &format!("{} saved sucessfully!", file_name))
+                    format!("{} saved sucessfully!", file_name))
             },
             SaveStatus::NoChanges => {
                 self.status_bar.set_message(
-                    &format!("no changes to save!"))
+                    format!("no changes to save!"))
             },
             SaveStatus::NameRequest => {
                 self.request_file_name()
             }
             SaveStatus::Fail(error) => {
                 self.status_bar.set_message(
-                    &format!("error occured while saving: {}", error))
+                    format!("error occured while saving: {}", error))
             }
         }
     }
@@ -460,7 +460,8 @@ impl Editor {
             .unwrap_or_else(|err| {
                 self.end(DieReason::Panic(err.to_string()))
             });
-        self.status_bar.set(&format!("file name to save: {}/", dir.display()), time::Duration::from_mins(1));
+        self.status_bar.set_message(format!("file name to save: "));
+        self.status_bar.set_prompt(format!("{}/", dir.display()));
         self.change_input_mode(InputMode::Prompt(PromptType::Save));
     }
 
@@ -468,6 +469,26 @@ impl Editor {
         match self.input_mode {
             InputMode::Normal => { },
             InputMode::Prompt(_) => { self.commit() }
+        }
+    }
+
+    fn delete_pressed(&mut self) {
+        match self.input_mode {
+            InputMode::Normal => { },
+            InputMode::Prompt(_) => {
+                self.status_bar.prompt_remove(self.cursor.x, Key::Delete);
+            }
+        }
+    }
+
+    fn backsapce_pressed(&mut self) {
+        match self.input_mode {
+            InputMode::Normal => { },
+            InputMode::Prompt(_) => {
+                if self.status_bar.prompt_remove(self.cursor.x, Key::BackSpace).is_some() {
+                    self.move_cursor_prompt(Key::ArrowLeft)
+                }
+            }
         }
     }
 
@@ -488,10 +509,12 @@ impl Editor {
         match target {
             InputMode::Normal => {
                 self.cursor.x = self.cursor.x_normal;
+                self.status_bar.set_timeout(time::Duration::from_secs(5))
             },
             InputMode::Prompt(_) => {
                 self.cursor.x_normal = self.cursor.x;
-                self.cursor.x = self.message().len()
+                self.cursor.x = self.message().len();
+                self.status_bar.set_timeout(time::Duration::from_mins(1))
             },
         };
 

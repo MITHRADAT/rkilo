@@ -1,4 +1,5 @@
 use std::time;
+use super::super::common::*;
 
 pub struct StatusBar {
     msg: String,
@@ -17,14 +18,13 @@ impl StatusBar {
         }
     }
 
-    pub fn set(&mut self, msg: &str, timeout: time::Duration) {
-        self.set_message(msg);
-        self.timeout = timeout;
+    pub fn set_prompt(&mut self, prompt: String) {
+        self.prompt = prompt.chars().collect();
         self.init = time::SystemTime::now();
     }
 
-    pub fn set_message(&mut self, msg: &str) {
-        self.msg = String::from(msg);
+    pub fn set_message(&mut self, msg: String) {
+        self.msg = msg;
         self.init = time::SystemTime::now()
     }
 
@@ -37,10 +37,36 @@ impl StatusBar {
         Ok(String::new())
     }
 
-    pub fn prompt_insert(&mut self, c: char, index: usize) {
-        let prompt_index = index - self.msg.len();
+    pub fn prompt_insert(&mut self, c: char, cursor_x: usize) {
+        let prompt_index = self.prompt_index(cursor_x);
         self.prompt.insert(prompt_index, c);
-        self.timeout = time::Duration::from_mins(1)
+        self.init = time::SystemTime::now()
+    }
+
+    pub fn prompt_remove(&mut self, cursor_x: usize, key: Key) -> Option<char> {
+        self.init = time::SystemTime::now();
+
+        if self.prompt.len() == 0 {
+            return None
+        }
+
+        let prompt_index = self.prompt_index(cursor_x);
+
+        match key {
+            Key::BackSpace => {
+                if prompt_index > 0 {
+                    return Some(self.prompt.remove(prompt_index - 1))
+                }
+            },
+            Key::Delete => {
+                if prompt_index < self.prompt.len() {
+                    return Some(self.prompt.remove(prompt_index))
+                }
+            },
+            _ => { }
+        }
+
+        return None
     }
 
     pub fn take_prompt(&mut self) -> String {
@@ -48,6 +74,17 @@ impl StatusBar {
         self.prompt.clear();
         self.timeout = StatusBar::default_timeout();
         prompt
+    }
+
+    pub fn prompt_index(&self, cursor_x: usize) -> usize {
+        if cursor_x > self.msg.len() {
+            return cursor_x - self.msg.len()
+        }
+        return 0
+    }
+
+    pub fn set_timeout(&mut self, timeout: time::Duration) {
+        self.timeout = timeout
     }
 
     fn default_timeout() -> time::Duration {
