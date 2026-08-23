@@ -349,7 +349,7 @@ impl Editor {
                 }
             },
             Key::ArrowRight => {
-                if self.cursor.x < self.status_bar.message().unwrap().len() {
+                if self.cursor.x < self.message().len() {
                     self.cursor.x += 1;
                 }
             },
@@ -430,8 +430,13 @@ impl Editor {
     fn save(&mut self) {
         match self.file.save() {
             SaveStatus::Successful => {
+                let file_name = &self.file.name.as_ref()
+                    .unwrap_or_else(|| {
+                        self.end();
+                        die(DieReason::Panic("cant get the file name.".to_string()));
+                    });
                 self.status_bar.set_message(
-                    &format!("{} saved sucessfully!", &self.file.name.as_ref().unwrap()))
+                    &format!("{} saved sucessfully!", file_name))
             },
             SaveStatus::NoChanges => {
                 self.status_bar.set_message(
@@ -484,10 +489,18 @@ impl Editor {
             },
             InputMode::Prompt(_) => {
                 self.cursor.x_normal = self.cursor.x;
-                self.cursor.x = self.status_bar.message().unwrap().len()
+                self.cursor.x = self.message().len()
             },
         };
 
         self.input_mode = target;
+    }
+
+    fn message(&self) -> String {
+        self.status_bar.message()
+            .unwrap_or_else(|err| {
+                self.end();
+                die(DieReason::Panic(err.to_string()))
+            })
     }
 }
