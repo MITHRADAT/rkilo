@@ -3,11 +3,11 @@ use std::{io::{self, Read}, fs, cmp, process, time, env};
 mod cursor;
 mod screen;
 mod file;
-mod message_status;
+mod status_bar;
 
 use cursor::Cursor;
 use screen::Screen;
-use message_status::MessageStatus;
+use status_bar::StatusBar;
 use file::*;
 use super::common::*;
 
@@ -26,7 +26,7 @@ pub struct Editor {
     file  : File,
     screen: Screen,
     cursor: Cursor,
-    message_status: MessageStatus,
+    status_bar: StatusBar,
     input_mode: InputMode
 }
 
@@ -38,7 +38,7 @@ impl Editor {
                 name: None,
                 lines: vec![],
             },
-            message_status: MessageStatus::new("Help: Ctrl-Q: quit, Ctrl-S: save"),
+            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save"),
             cursor: Cursor::get(),
             screen: screen,
             input_mode: InputMode::Normal
@@ -261,7 +261,7 @@ impl Editor {
     fn draw_message_bar(&self) {
         print!("\x1b[K"); //clear the line
 
-        let message = self.message_status.message()
+        let message = self.status_bar.message()
             .unwrap_or_else(|error| {
                 self.end();
                 die(DieReason::Panic(error.to_string()))
@@ -349,7 +349,7 @@ impl Editor {
                 }
             },
             Key::ArrowRight => {
-                if self.cursor.x < self.message_status.message().unwrap().len() {
+                if self.cursor.x < self.status_bar.message().unwrap().len() {
                     self.cursor.x += 1;
                 }
             },
@@ -424,24 +424,24 @@ impl Editor {
     }
 
     fn write_prompt(&mut self, key: u8) {
-        self.message_status.prompt_insert(key as char, self.cursor.x);
+        self.status_bar.prompt_insert(key as char, self.cursor.x);
     }
 
     fn save(&mut self) {
         match self.file.save() {
             SaveStatus::Successful => {
-                self.message_status.set_message(
+                self.status_bar.set_message(
                     &format!("{} saved sucessfully!", &self.file.name.as_ref().unwrap()))
             },
             SaveStatus::NoChanges => {
-                self.message_status.set_message(
+                self.status_bar.set_message(
                     &format!("no changes to save!"))
             },
             SaveStatus::NameRequest => {
                 self.request_file_name()
             }
             SaveStatus::Fail(error) => {
-                self.message_status.set_message(
+                self.status_bar.set_message(
                     &format!("error occured while saving: {}", error))
             }
         }
@@ -453,7 +453,7 @@ impl Editor {
                 self.end();
                 die(DieReason::Panic(err.to_string()))
             });
-        self.message_status.set(&format!("file name to save: {}/", dir.display()), time::Duration::from_mins(1));
+        self.status_bar.set(&format!("file name to save: {}/", dir.display()), time::Duration::from_mins(1));
         self.change_input_mode(InputMode::Prompt(PromptType::Save));
     }
 
@@ -467,7 +467,7 @@ impl Editor {
     fn commit(&mut self) {
         match self.input_mode {
             InputMode::Prompt(PromptType::Save) => {
-                let file_name = self.message_status.take_prompt();
+                let file_name = self.status_bar.take_prompt();
                 self.file.set_name(file_name);
                 self.save()
             },
@@ -484,7 +484,7 @@ impl Editor {
             },
             InputMode::Prompt(_) => {
                 self.cursor.x_normal = self.cursor.x;
-                self.cursor.x = self.message_status.message().unwrap().len()
+                self.cursor.x = self.status_bar.message().unwrap().len()
             },
         };
 

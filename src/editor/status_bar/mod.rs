@@ -1,18 +1,18 @@
 use std::time;
 
-pub struct MessageStatus {
+pub struct StatusBar {
     msg: String,
     prompt: Vec<char>,
     timeout: time::Duration,
     init: time::SystemTime
 }
 
-impl MessageStatus {
+impl StatusBar {
     pub fn new(msg: &str) -> Self {
         Self {
             msg: String::from(msg),
             prompt: vec![],
-            timeout: MessageStatus::default_timeout(),
+            timeout: StatusBar::default_timeout(),
             init: time::SystemTime::now()
         }
     }
@@ -46,7 +46,7 @@ impl MessageStatus {
     pub fn take_prompt(&mut self) -> String {
         let prompt: String = self.prompt.iter().collect();
         self.prompt.clear();
-        self.timeout = MessageStatus::default_timeout();
+        self.timeout = StatusBar::default_timeout();
         prompt
     }
 
