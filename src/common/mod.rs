@@ -50,6 +50,7 @@ pub enum Key {
     PageUp     ,
     PageDown   ,
     Delete     ,
+    BackSpace  ,
     Quit       ,
     ESC        ,
     Save       ,

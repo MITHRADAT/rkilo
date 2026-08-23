@@ -106,8 +106,10 @@ impl Editor {
             Key::Quit       => { self.end(DieReason::Quit) },
             Key::Home       => { self.cursor.x = 0; self.cursor.horizon = 0; },
             Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x; },
-            Key::Save       => { self.save() }
-            Key::Enter      => { self.enter_pressed() }
+            Key::Save       => { self.save() },
+            Key::Enter      => { self.enter_pressed() },
+            Key::Delete     => { self.delete_pressed() },
+            Key::BackSpace  => { self.backsapce_pressed() }
             Key::Char(c)    => { self.write(c)}
             _               => {}
         }
@@ -117,8 +119,12 @@ impl Editor {
         let mut buff = [0u8; 1];
         let byte = self.read_byte(&mut buff);
 
+        if byte == ctrl_key(b'h') { return Key::BackSpace }
+        if byte == ctrl_key(b'l') { return Key::ESC }
         if byte == ctrl_key(b'q') { return Key::Quit }
         if byte == ctrl_key(b's') { return Key::Save }
+        if byte == 8              { return Key::BackSpace }
+        if byte == 127            { return Key::BackSpace }
         if byte == b'\r'          { return Key::Enter }
         if byte == b'\x1b' {
             let mut seq = [0u8; 3];
