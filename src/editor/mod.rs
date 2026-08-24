@@ -54,13 +54,14 @@ impl Editor {
     }
 
     pub fn read_file(&mut self, path: &str) {
+        let tab_stop = self.cursor.tab_stop();
         self.file.name = Some(path.to_string());
         fs::read_to_string(path).unwrap_or_else(|err| {
             self.end(DieReason::Panic(err.to_string()))
         })
             .lines()
             .for_each(|line| {
-                self.add_new_line(line);
+                self.file.add_new_line(line, tab_stop);
             })
     }
 
@@ -361,32 +362,6 @@ impl Editor {
         }
     }
 
-    fn add_new_line(&mut self, line: &str) {
-        let mut render = vec![];
-        let mut index = 0 as usize;
-        for c in line.chars() {
-            if c == '\t' {
-                let spaces = self.cursor.tab_stop() - (index % self.cursor.tab_stop());
-                for _ in 0..spaces {
-                    render.push(' ');
-                }
-                index += spaces;
-            } else {
-                render.push(c);
-                index += 1;
-            }
-        }
-
-        let new_line = Line {
-            chars: line.chars().collect(),
-            render: render,
-            original: line.as_bytes().to_vec(),
-            dirty: false
-        };
-
-        self.file.lines.push(new_line)
-    }
-
     fn x_render(&self) -> usize {
         let chars = &self.file.lines[self.cursor.y].chars;
         let mut x_render = 0 as usize;
@@ -422,7 +397,7 @@ impl Editor {
             }
         } else {
             let line: String = (key as char).into();
-            self.add_new_line(&line);
+            self.file.add_new_line(&line, self.cursor.tab_stop());
         }
 
     }

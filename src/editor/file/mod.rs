@@ -61,6 +61,11 @@ impl File {
             }
         }
     }
+
+    pub fn add_new_line(&mut self, line: &str, tab_stop: usize) {
+        let new_line = Line::new(line, tab_stop);
+        self.lines.push(new_line)
+    }
 }
 
 pub struct Line {
@@ -71,6 +76,16 @@ pub struct Line {
 }
 
 impl Line {
+    pub fn new(line: &str, tab_stop: usize) -> Self {
+        let mut new_line = Self {
+            chars: line.chars().collect(),
+            render: vec![],
+            original: line.as_bytes().to_vec(),
+            dirty: false
+        };
+        new_line.render(tab_stop);
+        new_line
+    }
     pub fn insert(&mut self, c: char, chars_index: usize, render_index: usize, tab_stop: usize) {
         self.chars.insert(chars_index, c);
         if c == '\t' {
@@ -88,6 +103,22 @@ impl Line {
         self.chars.push(c);
         self.render.push(c);
         self.dirty = true;
+    }
+    fn render(&mut self, tab_stop: usize) {
+        self.render.clear();
+        let mut index = 0 as usize;
+        for c in &self.chars {
+            if *c == '\t' {
+                let spaces = tab_stop - (index % tab_stop);
+                for _ in 0..spaces {
+                    self.render.push(' ');
+                }
+                index += spaces;
+            } else {
+                self.render.push(*c);
+                index += 1;
+            }
+        }
     }
 }
 
