@@ -104,6 +104,13 @@ impl Line {
         self.render.push(c);
         self.dirty = true;
     }
+
+    pub fn remove(&mut self, chars_index: usize, tab_stop: usize) {
+        self.chars.remove(chars_index);
+        self.render(tab_stop);
+        self.dirty = true;
+    }
+
     fn render(&mut self, tab_stop: usize) {
         self.render.clear();
         let mut index = 0 as usize;
