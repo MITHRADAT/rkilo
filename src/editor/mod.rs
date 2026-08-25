@@ -403,7 +403,11 @@ impl Editor {
     }
 
     fn write_prompt(&mut self, key: u8) {
-        self.status_bar.prompt_insert(key as char, self.cursor.x);
+        let c = key as char;
+        if c == '\t' {
+            return
+        }
+        self.status_bar.prompt_insert(c, self.cursor.x);
     }
 
     fn save(&mut self) {
