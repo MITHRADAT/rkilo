@@ -54,14 +54,13 @@ impl Editor {
     }
 
     pub fn read_file(&mut self, path: &str) {
-        let tab_stop = self.cursor.tab_stop();
         self.file.name = Some(path.to_string());
         fs::read_to_string(path).unwrap_or_else(|err| {
             self.end(DieReason::Panic(err.to_string()))
         })
             .lines()
             .for_each(|line| {
-                self.file.add_new_line(line, tab_stop);
+                self.file.add_new_line(line);
             })
     }
 
@@ -82,7 +81,7 @@ impl Editor {
             InputMode::Normal => {
                 cursor_position = format!("\x1b[{};{}H",
                                           self.cursor.y - self.cursor.y_offset + 1,
-                                          self.cursor.x_render - self.cursor.x_offset + 1);
+                                          self.x_render() - self.cursor.x_offset + 1);
             },
             InputMode::Prompt(_) => {
                 cursor_position = format!("\x1b[{};{}H",
@@ -180,9 +179,7 @@ impl Editor {
             return
         }
 
-        if self.file.lines.len() > self.cursor.y {
-            self.cursor.x_render = self.x_render();
-        }
+        let x_render = self.x_render();
 
         if self.cursor.y < self.cursor.y_offset {
             self.cursor.y_offset = self.cursor.y
@@ -192,12 +189,12 @@ impl Editor {
             self.cursor.y_offset = self.cursor.y - self.screen.rows() + 1;
         }
 
-        if self.cursor.x_render < self.cursor.x_offset {
-            self.cursor.x_offset = self.cursor.x_render
+        if x_render < self.cursor.x_offset {
+            self.cursor.x_offset = x_render
         }
 
-        if self.cursor.x_render >= self.cursor.x_offset + self.screen.cols() {
-            self.cursor.x_offset = self.cursor.x_render - self.screen.cols() + 1;
+        if x_render >= self.cursor.x_offset + self.screen.cols() {
+            self.cursor.x_offset = x_render - self.screen.cols() + 1;
         }
     }
 
@@ -363,11 +360,16 @@ impl Editor {
     }
 
     fn x_render(&self) -> usize {
+        if self.file.lines.len() == 0 {
+            return 0
+        }
+
         let chars = &self.file.lines[self.cursor.y].chars;
         let mut x_render = 0 as usize;
+        let tab_stop = tab_stop();
         for i in 0..self.cursor.x {
             if chars[i] == '\t' {
-                x_render += self.cursor.tab_stop() - (x_render % self.cursor.tab_stop())
+                x_render += tab_stop - (x_render % tab_stop)
             } else {
                 x_render += 1
             }
@@ -391,13 +393,13 @@ impl Editor {
             let cursor_x = self.cursor.x;
             let line = &mut self.file.lines[self.cursor.y];
             if line.chars.len() > cursor_x {
-                line.insert(key as char, cursor_x, x_render, self.cursor.tab_stop());
+                line.insert(key as char, cursor_x, x_render);
             } else {
                 line.push(key as char);
             }
         } else {
             let line: String = (key as char).into();
-            self.file.add_new_line(&line, self.cursor.tab_stop());
+            self.file.add_new_line(&line);
         }
 
     }
@@ -466,7 +468,7 @@ impl Editor {
 
                 }
 
-                self.file.lines[self.cursor.y].remove(self.cursor.x, self.cursor.tab_stop())
+                self.file.lines[self.cursor.y].remove(self.cursor.x)
             },
             InputMode::Prompt(_) => {
                 self.status_bar.prompt_delete(self.cursor.x);
@@ -490,7 +492,7 @@ impl Editor {
                 }
 
                 self.move_cursor_normal(Key::ArrowLeft);
-                self.file.lines[self.cursor.y].remove(self.cursor.x, self.cursor.tab_stop());
+                self.file.lines[self.cursor.y].remove(self.cursor.x);
                 return
             },
             InputMode::Prompt(_) => {

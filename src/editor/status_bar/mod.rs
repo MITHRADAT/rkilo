@@ -1,5 +1,4 @@
 use std::time;
-use super::super::common::*;
 
 pub struct StatusBar {
     msg: String,

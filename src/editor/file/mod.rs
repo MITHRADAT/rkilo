@@ -1,4 +1,5 @@
 use std::{fs, io::{self, Write}};
+use super::super::common::*;
 
 pub struct File {
     pub name: Option<String>,
@@ -62,8 +63,8 @@ impl File {
         }
     }
 
-    pub fn add_new_line(&mut self, line: &str, tab_stop: usize) {
-        let new_line = Line::new(line, tab_stop);
+    pub fn add_new_line(&mut self, line: &str) {
+        let new_line = Line::new(line);
         self.lines.push(new_line)
     }
 }
@@ -76,18 +77,19 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(line: &str, tab_stop: usize) -> Self {
+    pub fn new(line: &str) -> Self {
         let mut new_line = Self {
             chars: line.chars().collect(),
             render: vec![],
             original: line.as_bytes().to_vec(),
             dirty: false
         };
-        new_line.render(tab_stop);
+        new_line.render();
         new_line
     }
-    pub fn insert(&mut self, c: char, chars_index: usize, render_index: usize, tab_stop: usize) {
+    pub fn insert(&mut self, c: char, chars_index: usize, render_index: usize) {
         self.chars.insert(chars_index, c);
+        let tab_stop = tab_stop();
         if c == '\t' {
             let spaces = tab_stop - (render_index % tab_stop);
             for _ in 0..spaces {
@@ -105,15 +107,16 @@ impl Line {
         self.dirty = true;
     }
 
-    pub fn remove(&mut self, chars_index: usize, tab_stop: usize) {
+    pub fn remove(&mut self, chars_index: usize) {
         self.chars.remove(chars_index);
-        self.render(tab_stop);
+        self.render();
         self.dirty = true;
     }
 
-    fn render(&mut self, tab_stop: usize) {
+    fn render(&mut self) {
         self.render.clear();
         let mut index = 0 as usize;
+        let tab_stop = tab_stop();
         for c in &self.chars {
             if *c == '\t' {
                 let spaces = tab_stop - (index % tab_stop);

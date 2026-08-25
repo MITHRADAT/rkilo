@@ -33,6 +33,10 @@ pub fn ctrl_key(c: u8) -> u8 {
     c & 0x1f
 }
 
+pub fn tab_stop() -> usize {
+    8
+}
+
 pub enum DieReason {
     Panic(String),
     FFI(String),
