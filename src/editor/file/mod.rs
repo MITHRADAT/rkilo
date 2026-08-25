@@ -67,6 +67,17 @@ impl File {
         let new_line = Line::new(line);
         self.lines.push(new_line)
     }
+
+    pub fn merge_lines(&mut self, from_index: usize, to_index: usize) {
+        let from = self.lines.remove(from_index);
+        let to = &mut self.lines[to_index];
+        to.push(' ');
+        for c in from.chars {
+            to.push(c)
+        }
+        to.dirty = true;
+        to.render()
+    }
 }
 
 pub struct Line {

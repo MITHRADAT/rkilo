@@ -462,10 +462,8 @@ impl Editor {
                 }
 
                 if self.cursor.x == max_x {
-                    //delete next line and merge it with current line like following line
-                    //self.file.merge_line(remove: self.cursor.y + 1, biggerline: self.cursor.y)
-                    //no need to move cursor
-
+                    self.file.merge_lines(self.cursor.y + 1, self.cursor.y);
+                    return
                 }
 
                 self.file.lines[self.cursor.y].remove(self.cursor.x)
@@ -486,8 +484,7 @@ impl Editor {
                 if self.cursor.x == 0 {
                     let cursor_y = self.cursor.y;
                     self.move_cursor_normal(Key::ArrowLeft); //this also moves cursor.y
-                    //delete current line and merge it with upper line like following line
-                    //self.file.merge_line(remove: cursor_y, biggerline: self.cursor.y)
+                    self.file.merge_lines(cursor_y, self.cursor.y);
                     return
                 }
 
