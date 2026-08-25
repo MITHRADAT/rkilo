@@ -68,6 +68,20 @@ impl File {
         self.lines.push(new_line)
     }
 
+    pub fn split_line(&mut self, line_index: usize, chars_index: usize) {
+        let line = &mut self.lines[line_index];
+        line.dirty = true;
+        let mut new_line = Line::new_empty();
+        let chars_len = line.chars.len();
+        for _ in chars_index..chars_len {
+            let c = line.chars.remove(chars_index);
+            new_line.chars.push(c);
+        }
+        line.render();
+        new_line.render();
+        self.lines.insert(line_index + 1, new_line)
+    }
+
     pub fn merge_lines(&mut self, from_index: usize, to_index: usize) {
         let from = self.lines.remove(from_index);
         let to = &mut self.lines[to_index];
@@ -98,6 +112,16 @@ impl Line {
         new_line.render();
         new_line
     }
+
+    pub fn new_empty() -> Self {
+        Self {
+            chars: vec![],
+            render: vec![],
+            original: vec![],
+            dirty: true
+        }
+    }
+
     pub fn insert(&mut self, c: char, chars_index: usize, render_index: usize) {
         self.chars.insert(chars_index, c);
         let tab_stop = tab_stop();

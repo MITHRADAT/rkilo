@@ -448,7 +448,10 @@ impl Editor {
 
     fn enter_pressed(&mut self) {
         match self.input_mode {
-            InputMode::Normal => { },
+            InputMode::Normal => {
+                self.file.split_line(self.cursor.y, self.cursor.x);
+                self.move_cursor_normal(Key::ArrowRight);
+            },
             InputMode::Prompt(_) => { self.commit() }
         }
     }
