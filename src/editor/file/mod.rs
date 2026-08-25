@@ -69,9 +69,15 @@ impl File {
     }
 
     pub fn split_line(&mut self, line_index: usize, chars_index: usize) {
+        let mut new_line = Line::new_empty();
+        if self.lines.len() == 0 {
+            self.lines.push(new_line);
+            new_line = Line::new_empty();
+            self.lines.push(new_line);
+            return
+        }
         let line = &mut self.lines[line_index];
         line.dirty = true;
-        let mut new_line = Line::new_empty();
         let chars_len = line.chars.len();
         for _ in chars_index..chars_len {
             let c = line.chars.remove(chars_index);
@@ -83,6 +89,9 @@ impl File {
     }
 
     pub fn merge_lines(&mut self, from_index: usize, to_index: usize) {
+        if from_index == to_index || self.lines.len() == 0 {
+            return
+        }
         let from = self.lines.remove(from_index);
         let to = &mut self.lines[to_index];
         to.push(' ');

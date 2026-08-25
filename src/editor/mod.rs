@@ -486,7 +486,7 @@ impl Editor {
 
                 if self.cursor.x == 0 {
                     let cursor_y = self.cursor.y;
-                    self.move_cursor_normal(Key::ArrowLeft); //this also moves cursor.y
+                    self.move_cursor_normal(Key::ArrowLeft);
                     self.file.merge_lines(cursor_y, self.cursor.y);
                     return
                 }
