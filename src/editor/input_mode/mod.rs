@@ -1,3 +1,5 @@
+use super::Editor;
+
 enum PromptType {
     Save,
     Quit
@@ -9,7 +11,7 @@ struct Prompt {
 }
 
 pub trait InputMode {
-    fn cursor_position(&self) -> (usize, usize);
+    fn cursor_position(&self, editor: &Editor) -> (usize, usize);
     fn scroll(&self);
     fn write(&self);
     fn move_cursor(&self);
@@ -20,8 +22,10 @@ pub trait InputMode {
 }
 
 impl InputMode for Normal {
-    fn cursor_position(&self) -> (usize, usize) {
-        (0, 0)
+    fn cursor_position(&self, editor: &Editor) -> (usize, usize) {
+        let x =  editor.x_render() - editor.cursor.x_offset + 1;
+        let y = editor.cursor.y - editor.cursor.y_offset + 1;
+        (x, y)
     }
 
     fn scroll(&self) {
@@ -54,8 +58,10 @@ impl InputMode for Normal {
 }
 
 impl InputMode for Prompt {
-    fn cursor_position(&self) -> (usize, usize) {
-        (0, 0)
+    fn cursor_position(&self, editor: &Editor) -> (usize, usize) {
+        let x = editor.cursor.x + 1;
+        let y = editor.screen.rows() + 2;
+        (x, y)
     }
 
     fn scroll(&self) {
