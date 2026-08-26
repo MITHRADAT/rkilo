@@ -44,19 +44,23 @@ pub enum DieReason {
 }
 
 pub enum Key {
-    Char(u8)   ,
-    ArrowUp    ,
-    ArrowDown  ,
-    ArrowRight ,
-    ArrowLeft  ,
-    Home       ,
-    End        ,
-    PageUp     ,
-    PageDown   ,
-    Delete     ,
-    BackSpace  ,
-    Quit       ,
-    ESC        ,
-    Save       ,
-    Enter      ,
+    Char(u8),
+    Move(MoveKey),
+    Delete,
+    BackSpace,
+    Quit,
+    ESC,
+    Save,
+    Enter,
+}
+
+pub enum MoveKey {
+    ArrowUp,
+    ArrowDown,
+    ArrowRight,
+    ArrowLeft,
+    Home,
+    End,
+    PageUp,
+    PageDown,
 }

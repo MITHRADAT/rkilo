@@ -98,15 +98,8 @@ impl Editor {
     pub fn process_keypress(&mut self) {
         let input = self.read_key();
         match input {
-            Key::ArrowUp    |
-            Key::ArrowDown  |
-            Key::ArrowLeft  |
-            Key::ArrowRight |
-            Key::PageUp     |
-            Key::PageDown   => { self.move_cursor(input) },
+            Key::Move(key)   => { self.move_cursor(key) },
             Key::Quit       => { self.end(DieReason::Quit) },
-            Key::Home       => { self.cursor.x = 0; self.cursor.horizon = 0; },
-            Key::End        => { self.cursor.x = self.max_x(); self.cursor.horizon = self.cursor.x; },
             Key::Save       => { self.save() },
             Key::Enter      => { self.enter_pressed() },
             Key::Delete     => { self.delete_pressed() },
@@ -132,26 +125,26 @@ impl Editor {
             match self.read_byte(&mut seq[0..1]) {
                 b'[' =>  {
                     match self.read_byte(&mut seq[1..2]) {
-                        b'1' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Home     } return Key::ESC },
-                        b'3' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Delete   } return Key::ESC },
-                        b'4' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::End      } return Key::ESC },
-                        b'5' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::PageUp   } return Key::ESC },
-                        b'6' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::PageDown } return Key::ESC },
-                        b'7' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Home     } return Key::ESC },
-                        b'8' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::End      } return Key::ESC },
-                        b'A' => return Key::ArrowUp,
-                        b'B' => return Key::ArrowDown,
-                        b'C' => return Key::ArrowRight,
-                        b'D' => return Key::ArrowLeft,
-                        b'F' => return Key::End,
-                        b'H' => return Key::Home,
+                        b'1' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Move(MoveKey::Home)     } return Key::ESC },
+                        b'3' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Delete                  } return Key::ESC },
+                        b'4' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Move(MoveKey::End)      } return Key::ESC },
+                        b'5' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Move(MoveKey::PageUp)   } return Key::ESC },
+                        b'6' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Move(MoveKey::PageDown) } return Key::ESC },
+                        b'7' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Move(MoveKey::Home)     } return Key::ESC },
+                        b'8' => { if self.read_byte(&mut seq[2..3]) == b'~' { return Key::Move(MoveKey::End)      } return Key::ESC },
+                        b'A' => return Key::Move(MoveKey::ArrowUp),
+                        b'B' => return Key::Move(MoveKey::ArrowDown),
+                        b'C' => return Key::Move(MoveKey::ArrowRight),
+                        b'D' => return Key::Move(MoveKey::ArrowLeft),
+                        b'F' => return Key::Move(MoveKey::End),
+                        b'H' => return Key::Move(MoveKey::Home),
                         _    => return Key::ESC,
                     }
                 },
                 b'O' => {
                     match self.read_byte(&mut seq[1..2]) {
-                        b'H' => return Key::Home,
-                        b'F' => return Key::End,
+                        b'H' => return Key::Move(MoveKey::Home),
+                        b'F' => return Key::Move(MoveKey::End),
                         _    => return Key::ESC
                     }
                 },
@@ -285,28 +278,28 @@ impl Editor {
         }
     }
 
-    fn move_cursor(&mut self, key: Key) {
+    fn move_cursor(&mut self, key: MoveKey) {
         match self.input_mode {
             InputMode::Normal => { self.move_cursor_normal(key) },
             InputMode::Prompt(_) => { self.move_cursor_prompt(key) }
         }
     }
 
-    fn move_cursor_normal(&mut self, key: Key) {
+    fn move_cursor_normal(&mut self, key: MoveKey) {
         match key {
-            Key::ArrowUp => {
+            MoveKey::ArrowUp => {
                 if self.cursor.y > 0 {
                     self.cursor.y -= 1;
                 }
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
-            Key::ArrowDown => {
+            MoveKey::ArrowDown => {
                 if self.cursor.y + 1 < self.file.lines.len() {
                     self.cursor.y += 1;
                 }
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
-            Key::ArrowLeft => {
+            MoveKey::ArrowLeft => {
                 if self.cursor.x > 0 {
                     self.cursor.x -= 1;
                 } else if self.cursor.y > 0 {
@@ -315,7 +308,7 @@ impl Editor {
                 }
                 self.cursor.horizon = self.cursor.x;
             },
-            Key::ArrowRight => {
+            MoveKey::ArrowRight => {
                 if self.cursor.x < self.max_x() {
                     self.cursor.x += 1;
                 } else if self.cursor.y + 1 < self.file.lines.len() {
@@ -324,7 +317,7 @@ impl Editor {
                 }
                 self.cursor.horizon = self.cursor.x;
             },
-            Key::PageUp => {
+            MoveKey::PageUp => {
                 if self.cursor.y >= self.screen.rows() {
                     self.cursor.y -= self.screen.rows()
                 } else {
@@ -332,30 +325,38 @@ impl Editor {
                 }
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
             },
-            Key::PageDown => {
+            MoveKey::PageDown => {
                 if self.cursor.y + self.screen.rows() < self.file.lines.len() {
                     self.cursor.y += self.screen.rows()
                 } else {
                     self.cursor.y = self.file.lines.len().saturating_sub(1)
                 }
                 self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
+            },
+            MoveKey::Home => {
+                self.cursor.x = 0;
+                self.cursor.horizon = 0
+            },
+            MoveKey::End => {
+                self.cursor.x = self.max_x();
+                self.cursor.horizon = self.cursor.x
             }
-            _ => {}
         }
     }
 
-    fn move_cursor_prompt(&mut self, key: Key) {
+    fn move_cursor_prompt(&mut self, key: MoveKey) {
         match key {
-            Key::ArrowLeft => {
+            MoveKey::ArrowLeft => {
                 if self.status_bar.prompt_index(self.cursor.x) > 0 {
                     self.cursor.x -= 1;
                 }
             },
-            Key::ArrowRight => {
+            MoveKey::ArrowRight => {
                 if self.cursor.x < self.message().len() {
                     self.cursor.x += 1;
                 }
             },
+            //todo: investigate implementation of other MoveKeys
             _ => {}
         }
     }
@@ -385,7 +386,7 @@ impl Editor {
             InputMode::Prompt(_) => self.write_prompt(key)
         }
 
-        self.move_cursor(Key::ArrowRight);
+        self.move_cursor(MoveKey::ArrowRight);
     }
 
     fn write_normal(&mut self, key: u8) {
@@ -451,7 +452,7 @@ impl Editor {
         match self.input_mode {
             InputMode::Normal => {
                 self.file.split_line(self.cursor.y, self.cursor.x);
-                self.move_cursor_normal(Key::ArrowRight);
+                self.move_cursor_normal(MoveKey::ArrowRight);
             },
             InputMode::Prompt(_) => { self.commit() }
         }
@@ -487,18 +488,18 @@ impl Editor {
 
                 if self.cursor.x == 0 {
                     let cursor_y = self.cursor.y;
-                    self.move_cursor_normal(Key::ArrowLeft);
+                    self.move_cursor_normal(MoveKey::ArrowLeft);
                     self.file.merge_lines(cursor_y, self.cursor.y);
                     return
                 }
 
-                self.move_cursor_normal(Key::ArrowLeft);
+                self.move_cursor_normal(MoveKey::ArrowLeft);
                 self.file.lines[self.cursor.y].remove(self.cursor.x);
                 return
             },
             InputMode::Prompt(_) => {
                 if self.status_bar.prompt_backspace(self.cursor.x).is_some() {
-                    self.move_cursor_prompt(Key::ArrowLeft)
+                    self.move_cursor_prompt(MoveKey::ArrowLeft)
                 }
             }
         }
