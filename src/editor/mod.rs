@@ -4,6 +4,7 @@ mod cursor;
 mod screen;
 mod file;
 mod status_bar;
+mod input_mode;
 
 use cursor::Cursor;
 use screen::Screen;
