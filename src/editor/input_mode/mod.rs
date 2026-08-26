@@ -1,4 +1,6 @@
+use std::cmp;
 use super::Editor;
+use super::super::common::*;
 
 enum PromptType {
     Save,
@@ -14,7 +16,7 @@ pub trait InputMode {
     fn cursor_position(&self, editor: &Editor) -> (usize, usize);
     fn scroll(&self, editor: &mut Editor);
     fn write(&self, editor: &mut Editor, c: char);
-    fn move_cursor(&self);
+    fn move_cursor(&self, editor: &mut Editor, key: MoveKey);
     fn enter_pressed(&self);
     fn delete_pressed(&self);
     fn backspace_pressed(&self);
@@ -65,8 +67,64 @@ impl InputMode for Normal {
         }
     }
 
-    fn move_cursor(&self) {
-
+    fn move_cursor(&self, editor: &mut Editor, key: MoveKey) {
+        match key {
+            MoveKey::ArrowUp => {
+                if editor.cursor.y > 0 {
+                    editor.cursor.y -= 1;
+                }
+                editor.cursor.x = cmp::min(editor.cursor.horizon, editor.max_x())
+            },
+            MoveKey::ArrowDown => {
+                if editor.cursor.y + 1 < editor.file.lines.len() {
+                    editor.cursor.y += 1;
+                }
+                editor.cursor.x = cmp::min(editor.cursor.horizon, editor.max_x())
+            },
+            MoveKey::ArrowLeft => {
+                if editor.cursor.x > 0 {
+                    editor.cursor.x -= 1;
+                } else if editor.cursor.y > 0 {
+                    editor.cursor.y -= 1;
+                    editor.cursor.x = editor.max_x();
+                }
+                editor.cursor.horizon = editor.cursor.x;
+            },
+            MoveKey::ArrowRight => {
+                if editor.cursor.x < editor.max_x() {
+                    editor.cursor.x += 1;
+                } else if editor.cursor.y + 1 < editor.file.lines.len() {
+                    editor.cursor.y += 1;
+                    editor.cursor.x = 0;
+                }
+                editor.cursor.horizon = editor.cursor.x;
+            },
+            MoveKey::PageUp => {
+                if editor.cursor.y >= editor.screen.rows() {
+                    editor.cursor.y -= editor.screen.rows()
+                } else {
+                    editor.cursor.y = 0;
+                }
+                editor.cursor.x = cmp::min(editor.cursor.horizon, editor.max_x())
+            },
+            MoveKey::PageDown => {
+                if editor.cursor.y + editor.screen.rows() < editor.file.lines.len() {
+                    editor.cursor.y += editor.screen.rows()
+                } else {
+                    editor.cursor.y = editor.file.lines.len().saturating_sub(1)
+                }
+                editor.cursor.x = cmp::min(editor.cursor.horizon, editor.max_x())
+            },
+            MoveKey::Home => {
+                editor.cursor.x = 0;
+                editor.cursor.horizon = 0
+            },
+            MoveKey::End => {
+                let max_x = editor.max_x();
+                editor.cursor.x = max_x;
+                editor.cursor.horizon = max_x
+            }
+        }
     }
 
     fn enter_pressed(&self) {
@@ -104,8 +162,29 @@ impl InputMode for Prompt {
         editor.status_bar.prompt_insert(c, editor.cursor.x);
     }
 
-    fn move_cursor(&self) {
-
+    fn move_cursor(&self, editor: &mut Editor, key: MoveKey) {
+        match key {
+            MoveKey::ArrowLeft => {
+                if editor.status_bar.prompt_index(editor.cursor.x) > 0 {
+                    editor.cursor.x -= 1;
+                }
+            },
+            MoveKey::ArrowRight => {
+                if editor.cursor.x < editor.message().len() {
+                    editor.cursor.x += 1;
+                }
+            },
+            MoveKey::Home => {
+                editor.cursor.x = 0
+            },
+            MoveKey::End => {
+                editor.cursor.x = editor.max_x()
+            },
+            MoveKey::ArrowUp   => { return },
+            MoveKey::ArrowDown => { return },
+            MoveKey::PageUp    => { return },
+            MoveKey::PageDown  => { return },
+        }
     }
 
     fn enter_pressed(&self) {
