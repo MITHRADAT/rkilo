@@ -61,7 +61,7 @@ impl Editor {
         })
             .lines()
             .for_each(|line| {
-                self.file.add_new_line(line);
+                self.file.add_new_line(line, false);
             })
     }
 
@@ -400,7 +400,7 @@ impl Editor {
             }
         } else {
             let line: String = (key as char).into();
-            self.file.add_new_line(&line);
+            self.file.add_new_line(&line, true);
         }
 
     }

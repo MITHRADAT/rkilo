@@ -63,8 +63,8 @@ impl File {
         }
     }
 
-    pub fn add_new_line(&mut self, line: &str) {
-        let new_line = Line::new(line);
+    pub fn add_new_line(&mut self, line: &str, dirty: bool) {
+        let new_line = Line::new(line, dirty);
         self.lines.push(new_line)
     }
 
@@ -111,12 +111,12 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(line: &str) -> Self {
+    pub fn new(line: &str, dirty: bool) -> Self {
         let mut new_line = Self {
             chars: line.chars().collect(),
             render: vec![],
             original: line.as_bytes().to_vec(),
-            dirty: false
+            dirty: dirty
         };
         new_line.render();
         new_line

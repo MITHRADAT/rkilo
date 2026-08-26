@@ -13,7 +13,7 @@ struct Prompt {
 pub trait InputMode {
     fn cursor_position(&self, editor: &Editor) -> (usize, usize);
     fn scroll(&self, editor: &mut Editor);
-    fn write(&self);
+    fn write(&self, editor: &mut Editor, c: char);
     fn move_cursor(&self);
     fn enter_pressed(&self);
     fn delete_pressed(&self);
@@ -48,8 +48,21 @@ impl InputMode for Normal {
         }
     }
 
-    fn write(&self) {
-
+    fn write(&self, editor: &mut Editor, c: char) {
+        let cursor_y = editor.cursor.y;
+        if editor.file.lines.len() > cursor_y {
+            let x_render = editor.x_render();
+            let cursor_x = editor.cursor.x;
+            let line = &mut editor.file.lines[cursor_y];
+            if line.chars.len() > cursor_x {
+                line.insert(c, cursor_x, x_render);
+            } else {
+                line.push(c);
+            }
+        } else {
+            let line: String = (c).into();
+            editor.file.add_new_line(&line, true);
+        }
     }
 
     fn move_cursor(&self) {
@@ -84,8 +97,11 @@ impl InputMode for Prompt {
         return
     }
 
-    fn write(&self) {
-
+    fn write(&self, editor: &mut Editor, c: char) {
+        if c == '\t' {
+            return
+        }
+        editor.status_bar.prompt_insert(c, editor.cursor.x);
     }
 
     fn move_cursor(&self) {
