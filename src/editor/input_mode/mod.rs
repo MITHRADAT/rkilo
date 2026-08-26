@@ -12,7 +12,7 @@ struct Prompt {
 
 pub trait InputMode {
     fn cursor_position(&self, editor: &Editor) -> (usize, usize);
-    fn scroll(&self);
+    fn scroll(&self, editor: &mut Editor);
     fn write(&self);
     fn move_cursor(&self);
     fn enter_pressed(&self);
@@ -28,10 +28,26 @@ impl InputMode for Normal {
         (x, y)
     }
 
-    fn scroll(&self) {
+    fn scroll(&self, editor: &mut Editor) {
+        let x_render = editor.x_render();
 
+        if editor.cursor.y < editor.cursor.y_offset {
+            editor.cursor.y_offset = editor.cursor.y
+        }
+
+        if editor.cursor.y >= editor.cursor.y_offset + editor.screen.rows() {
+            editor.cursor.y_offset = editor.cursor.y - editor.screen.rows() + 1;
+        }
+
+        if x_render < editor.cursor.x_offset {
+            editor.cursor.x_offset = x_render
+        }
+
+        if x_render >= editor.cursor.x_offset + editor.screen.cols() {
+            editor.cursor.x_offset = x_render - editor.screen.cols() + 1;
+        }
     }
-    
+
     fn write(&self) {
 
     }
@@ -64,8 +80,8 @@ impl InputMode for Prompt {
         (x, y)
     }
 
-    fn scroll(&self) {
-
+    fn scroll(&self, _: &mut Editor) {
+        return
     }
 
     fn write(&self) {
@@ -73,7 +89,7 @@ impl InputMode for Prompt {
     }
 
     fn move_cursor(&self) {
-        
+
     }
 
     fn enter_pressed(&self) {
