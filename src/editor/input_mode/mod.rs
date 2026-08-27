@@ -245,7 +245,7 @@ impl InputMode for Prompt {
             let file_name = editor.status_bar.take_prompt();
             editor.file.set_name(file_name);
             editor.save();
-            editor.input_mode = normal_mode()
+            editor.change_input_mode(Normal);
         }
     }
 
