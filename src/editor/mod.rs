@@ -69,13 +69,13 @@ impl Editor {
         let input = self.read_key();
         match input {
             Key::Move(key)   => { self.move_cursor(key) },
-            Key::Quit       => { self.end(DieReason::Quit) },
-            Key::Save       => { self.save() },
-            Key::Enter      => { self.enter_pressed() },
-            Key::Delete     => { self.delete_pressed() },
-            Key::BackSpace  => { self.backsapce_pressed() }
-            Key::Char(c)    => { self.write(c)}
-            _               => {}
+            Key::Quit        => { self.end(DieReason::Quit) },
+            Key::Save        => { self.save() },
+            Key::Enter       => { self.enter_pressed() },
+            Key::Delete      => { self.delete_pressed() },
+            Key::BackSpace   => { self.backspace_pressed() }
+            Key::Char(c)     => { self.write(c)}
+            _                => {}
         }
     }
 
@@ -263,10 +263,10 @@ impl Editor {
             SaveStatus::Successful => {
                 let file_name = &self.file.name.as_ref()
                     .unwrap_or_else(|| {
-                        self.end(DieReason::Panic("cant get the file name.".to_string()))
+                        self.end(DieReason::Panic("can not get the file name.".to_string()))
                     });
                 self.status_bar.set_message(
-                    format!("{} saved sucessfully!", file_name))
+                    format!("{} saved successfully!", file_name))
             },
             SaveStatus::NoChanges => {
                 self.status_bar.set_message(
@@ -277,7 +277,7 @@ impl Editor {
             }
             SaveStatus::Fail(error) => {
                 self.status_bar.set_message(
-                    format!("error occured while saving: {}", error))
+                    format!("error occurred while saving: {}", error))
             }
         }
     }
@@ -302,7 +302,7 @@ impl Editor {
         f(self)
     }
 
-    fn backsapce_pressed(&mut self) {
+    fn backspace_pressed(&mut self) {
         let f = self.input_mode.backspace_pressed();
         f(self)
     }

@@ -78,11 +78,7 @@ impl File {
         }
         let line = &mut self.lines[line_index];
         line.dirty = true;
-        let chars_len = line.chars.len();
-        for _ in chars_index..chars_len {
-            let c = line.chars.remove(chars_index);
-            new_line.chars.push(c);
-        }
+        new_line.chars = line.chars.split_off(chars_index);
         line.render();
         new_line.render();
         self.lines.insert(line_index + 1, new_line)
@@ -94,7 +90,6 @@ impl File {
         }
         let from = self.lines.remove(from_index);
         let to = &mut self.lines[to_index];
-        to.push(' ');
         for c in from.chars {
             to.push(c)
         }
@@ -133,15 +128,7 @@ impl Line {
 
     pub fn insert(&mut self, c: char, chars_index: usize, render_index: usize) {
         self.chars.insert(chars_index, c);
-        let tab_stop = tab_stop();
-        if c == '\t' {
-            let spaces = tab_stop - (render_index % tab_stop);
-            for _ in 0..spaces {
-                self.render.insert(render_index, ' ');
-            }
-        } else {
-            self.render.insert(render_index, c);
-        }
+        self.render();
         self.dirty = true;
     }
 
