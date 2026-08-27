@@ -12,29 +12,31 @@ struct Prompt {
     prompt_type: PromptType
 }
 
+pub fn default_mode() -> Box<dyn InputMode> {
+    Box::new(Normal {})
+}
 
 pub trait InputMode {
-    fn cursor_position(&self)   -> impl Fn(&Editor) -> (usize, usize);
-    fn scroll(&self)            -> impl Fn(&mut Editor);
-    fn write(&self)             -> impl Fn(&mut Editor, char);
-    fn move_cursor(&self)       -> impl Fn(&mut Editor, MoveKey);
-    fn enter_pressed(&self)     -> impl Fn(&mut Editor);
-    fn delete_pressed(&self)    -> impl Fn(&mut Editor);
-    fn backspace_pressed(&self) -> impl Fn(&mut Editor);
+    fn cursor_position(&self)   -> fn(&Editor) -> (usize, usize);
+    fn scroll(&self)            -> fn(&mut Editor);
+    fn write(&self)             -> fn(&mut Editor, char);
+    fn move_cursor(&self)       -> fn(&mut Editor, MoveKey);
+    fn enter_pressed(&self)     -> fn(&mut Editor);
+    fn delete_pressed(&self)    -> fn(&mut Editor);
+    fn backspace_pressed(&self) -> fn(&mut Editor);
 }
 
 impl InputMode for Normal {
-    fn cursor_position(&self) -> impl Fn(&Editor) -> (usize, usize) {
-        let function = |editor: &Editor| {
+    fn cursor_position(&self) -> fn(&Editor) -> (usize, usize) {
+        |editor: &Editor| {
             let x =  editor.x_render() - editor.cursor.x_offset + 1;
             let y = editor.cursor.y - editor.cursor.y_offset + 1;
             (x, y)
-        };
-        function
+        }
     }
 
-    fn scroll(&self) -> impl Fn(&mut Editor) {
-        let function = |editor: &mut Editor| {
+    fn scroll(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
             let x_render = editor.x_render();
 
             if editor.cursor.y < editor.cursor.y_offset {
@@ -52,12 +54,11 @@ impl InputMode for Normal {
             if x_render >= editor.cursor.x_offset + editor.screen.cols() {
                 editor.cursor.x_offset = x_render - editor.screen.cols() + 1;
             }
-        };
-        function
+        }
     }
 
-    fn write(&self) -> impl Fn(&mut Editor, char) {
-        let function = |editor: &mut Editor, c: char| {
+    fn write(&self) -> fn(&mut Editor, char) {
+        |editor: &mut Editor, c: char| {
             let cursor_y = editor.cursor.y;
             if editor.file.lines.len() > cursor_y {
                 let x_render = editor.x_render();
@@ -72,12 +73,11 @@ impl InputMode for Normal {
                 let line: String = (c).into();
                 editor.file.add_new_line(&line, true);
             }
-        };
-        function
+        }
     }
 
-    fn move_cursor(&self) -> impl Fn(&mut Editor, MoveKey) {
-        let function = |editor: &mut Editor, key: MoveKey| {
+    fn move_cursor(&self) -> fn(&mut Editor, MoveKey) {
+        |editor: &mut Editor, key: MoveKey| {
             match key {
                 MoveKey::ArrowUp => {
                     if editor.cursor.y > 0 {
@@ -135,20 +135,18 @@ impl InputMode for Normal {
                     editor.cursor.horizon = max_x
                 }
             }
-        };
-        function
+        }
     }
 
-    fn enter_pressed(&self) -> impl Fn(&mut Editor) {
-        let function = |editor: &mut Editor| {
+    fn enter_pressed(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
             editor.file.split_line(editor.cursor.y, editor.cursor.x);
-            self.move_cursor()(editor, MoveKey::ArrowRight);
-        };
-        function
+            editor.move_cursor(MoveKey::ArrowRight);
+        }
     }
 
-    fn delete_pressed(&self) -> impl Fn(&mut Editor) {
-        let function = |editor: &mut Editor| {
+    fn delete_pressed(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
             let max_x = editor.max_x();
             if editor.cursor.x == max_x && editor.cursor.y + 1 == editor.file.lines.len() {
                 return
@@ -160,59 +158,54 @@ impl InputMode for Normal {
             }
 
             editor.file.lines[editor.cursor.y].remove(editor.cursor.x)
-        };
-        function
+        }
     }
 
-    fn backspace_pressed(&self) -> impl Fn(&mut Editor) {
-        let function = |editor: &mut Editor| {
+    fn backspace_pressed(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
             if editor.cursor.x == 0 && editor.cursor.y == 0 {
                 return
             }
 
             if editor.cursor.x == 0 {
                 let cursor_y = editor.cursor.y;
-                self.move_cursor()(editor, MoveKey::ArrowLeft);
+                editor.move_cursor(MoveKey::ArrowLeft);
                 editor.file.merge_lines(cursor_y, editor.cursor.y);
                 return
             }
 
-            self.move_cursor()(editor, MoveKey::ArrowLeft);
+            editor.move_cursor(MoveKey::ArrowLeft);
             editor.file.lines[editor.cursor.y].remove(editor.cursor.x);
             return
-        };
-        function
+        }
     }
 
 }
 
 impl InputMode for Prompt {
-    fn cursor_position(&self) -> impl Fn(&Editor) -> (usize, usize) {
-        let function = |editor: &Editor| {
+    fn cursor_position(&self) -> fn(&Editor) -> (usize, usize) {
+        |editor: &Editor| {
             let x = editor.cursor.x + 1;
             let y = editor.screen.rows() + 2;
             (x, y)
-        };
-        function
+        }
     }
 
-    fn scroll(&self) -> impl Fn(&mut Editor) {
-        let function = |_: &mut Editor| {};
-        function
+    fn scroll(&self) -> fn(&mut Editor) {
+        |_: &mut Editor| {}
     }
 
-    fn write(&self) -> impl Fn(&mut Editor, char) {
-        let function = |editor: &mut Editor, c: char| {
+    fn write(&self) -> fn(&mut Editor, char) {
+        |editor: &mut Editor, c: char| {
             if c == '\t' {
                 return
             }
             editor.status_bar.prompt_insert(c, editor.cursor.x);
-        };
-        function
+        }
     }
 
-    fn move_cursor(&self) -> impl Fn(&mut Editor, MoveKey) {
-        let function = |editor: &mut Editor, key: MoveKey| {
+    fn move_cursor(&self) -> fn(&mut Editor, MoveKey) {
+        |editor: &mut Editor, key: MoveKey| {
             match key {
                 MoveKey::ArrowLeft => {
                     if editor.status_bar.prompt_index(editor.cursor.x) > 0 {
@@ -235,39 +228,29 @@ impl InputMode for Prompt {
                 MoveKey::PageUp    => { return },
                 MoveKey::PageDown  => { return },
             }
-        };
-        function
+        }
     }
 
-    fn enter_pressed(&self) -> impl Fn(&mut Editor) {
-        let function = |editor: &mut Editor| {
-            self.commit(editor);
-        };
-        function
+    fn enter_pressed(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
+            let file_name = editor.status_bar.take_prompt();
+            editor.file.set_name(file_name);
+            editor.save()
+        }
     }
 
-    fn delete_pressed(&self) -> impl Fn(&mut Editor) {
-        let function = |editor: &mut Editor| {
+    fn delete_pressed(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
             editor.status_bar.prompt_delete(editor.cursor.x);
-        };
-        function
+        }
     }
 
-    fn backspace_pressed(&self) -> impl Fn(&mut Editor) {
-        let function = |editor: &mut Editor| {
+    fn backspace_pressed(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
             if editor.status_bar.prompt_backspace(editor.cursor.x).is_some() {
-                self.move_cursor()(editor, MoveKey::ArrowLeft)
+                editor.move_cursor(MoveKey::ArrowLeft)
             }
-        };
-        function
+        }
     }
 
-}
-
-impl Prompt {
-    fn commit(&self, editor: &mut Editor) {
-        let file_name = editor.status_bar.take_prompt();
-        editor.file.set_name(file_name);
-        editor.save()
-    }
 }
