@@ -1,34 +1,15 @@
-use std::{io::{self, Read}, fs, cmp, time, env};
+use std::{io::{self, Read}, fs, cmp, env};
 
-mod cursor;
-mod screen;
-mod file;
-mod status_bar;
-mod input_mode;
+mod cursor; mod screen; mod file; mod status_bar; mod input_mode;
+use cursor::Cursor; use screen::Screen; use status_bar::StatusBar; use input_mode::*; use file::*; use super::common::*;
 
-use cursor::Cursor;
-use screen::Screen;
-use status_bar::StatusBar;
-use file::*;
-use super::common::*;
-
-#[derive(PartialEq)]
-enum PromptType {
-    Save
-}
-
-#[derive(PartialEq)]
-enum InputMode {
-    Normal,
-    Prompt(PromptType),
-}
 
 pub struct Editor {
     file  : File,
     screen: Screen,
     cursor: Cursor,
     status_bar: StatusBar,
-    input_mode: InputMode
+    input_mode: Box<dyn InputMode>
 }
 
 impl Editor {
@@ -42,7 +23,7 @@ impl Editor {
             status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save"),
             cursor: Cursor::get(),
             screen: screen,
-            input_mode: InputMode::Normal
+            input_mode: input_mode::normal_mode()
         };
 
         editor.screen.enable_raw_mode();
@@ -77,20 +58,9 @@ impl Editor {
     }
 
     fn show_cursor(&self) {
-        let mut cursor_position = String::new();
-        match self.input_mode {
-            InputMode::Normal => {
-                cursor_position = format!("\x1b[{};{}H",
-                                          self.cursor.y - self.cursor.y_offset + 1,
-                                          self.x_render() - self.cursor.x_offset + 1);
-            },
-            InputMode::Prompt(_) => {
-                cursor_position = format!("\x1b[{};{}H",
-                                          self.screen.rows() + 2,
-                                          self.cursor.x + 1
-                )
-            }
-        }
+        let f = self.input_mode.cursor_position();
+        let (x, y) = f(self);
+        let cursor_position = format!("\x1b[{};{}H", y, x);
         print!("{}", cursor_position);
         print!("\x1b[?25h"); //show the cursor
     }
@@ -169,27 +139,8 @@ impl Editor {
     }
 
     fn scroll(&mut self) {
-        if self.input_mode != InputMode::Normal {
-            return
-        }
-
-        let x_render = self.x_render();
-
-        if self.cursor.y < self.cursor.y_offset {
-            self.cursor.y_offset = self.cursor.y
-        }
-
-        if self.cursor.y >= self.cursor.y_offset + self.screen.rows() {
-            self.cursor.y_offset = self.cursor.y - self.screen.rows() + 1;
-        }
-
-        if x_render < self.cursor.x_offset {
-            self.cursor.x_offset = x_render
-        }
-
-        if x_render >= self.cursor.x_offset + self.screen.cols() {
-            self.cursor.x_offset = x_render - self.screen.cols() + 1;
-        }
+        let f = self.input_mode.scroll();
+        f(self)
     }
 
     fn draw_rows(&self) {
@@ -279,86 +230,8 @@ impl Editor {
     }
 
     fn move_cursor(&mut self, key: MoveKey) {
-        match self.input_mode {
-            InputMode::Normal => { self.move_cursor_normal(key) },
-            InputMode::Prompt(_) => { self.move_cursor_prompt(key) }
-        }
-    }
-
-    fn move_cursor_normal(&mut self, key: MoveKey) {
-        match key {
-            MoveKey::ArrowUp => {
-                if self.cursor.y > 0 {
-                    self.cursor.y -= 1;
-                }
-                self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
-            },
-            MoveKey::ArrowDown => {
-                if self.cursor.y + 1 < self.file.lines.len() {
-                    self.cursor.y += 1;
-                }
-                self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
-            },
-            MoveKey::ArrowLeft => {
-                if self.cursor.x > 0 {
-                    self.cursor.x -= 1;
-                } else if self.cursor.y > 0 {
-                    self.cursor.y -= 1;
-                    self.cursor.x = self.max_x();
-                }
-                self.cursor.horizon = self.cursor.x;
-            },
-            MoveKey::ArrowRight => {
-                if self.cursor.x < self.max_x() {
-                    self.cursor.x += 1;
-                } else if self.cursor.y + 1 < self.file.lines.len() {
-                    self.cursor.y += 1;
-                    self.cursor.x = 0;
-                }
-                self.cursor.horizon = self.cursor.x;
-            },
-            MoveKey::PageUp => {
-                if self.cursor.y >= self.screen.rows() {
-                    self.cursor.y -= self.screen.rows()
-                } else {
-                    self.cursor.y = 0;
-                }
-                self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
-            },
-            MoveKey::PageDown => {
-                if self.cursor.y + self.screen.rows() < self.file.lines.len() {
-                    self.cursor.y += self.screen.rows()
-                } else {
-                    self.cursor.y = self.file.lines.len().saturating_sub(1)
-                }
-                self.cursor.x = cmp::min(self.cursor.horizon, self.max_x())
-            },
-            MoveKey::Home => {
-                self.cursor.x = 0;
-                self.cursor.horizon = 0
-            },
-            MoveKey::End => {
-                self.cursor.x = self.max_x();
-                self.cursor.horizon = self.cursor.x
-            }
-        }
-    }
-
-    fn move_cursor_prompt(&mut self, key: MoveKey) {
-        match key {
-            MoveKey::ArrowLeft => {
-                if self.status_bar.prompt_index(self.cursor.x) > 0 {
-                    self.cursor.x -= 1;
-                }
-            },
-            MoveKey::ArrowRight => {
-                if self.cursor.x < self.message().len() {
-                    self.cursor.x += 1;
-                }
-            },
-            //todo: investigate implementation of other MoveKeys
-            _ => {}
-        }
+        let f = self.input_mode.move_cursor();
+        f(self, key)
     }
 
     fn x_render(&self) -> usize {
@@ -381,37 +254,8 @@ impl Editor {
     }
 
     fn write(&mut self, key: u8) {
-        match self.input_mode {
-            InputMode::Normal => self.write_normal(key),
-            InputMode::Prompt(_) => self.write_prompt(key)
-        }
-
-        self.move_cursor(MoveKey::ArrowRight);
-    }
-
-    fn write_normal(&mut self, key: u8) {
-        if self.file.lines.len() > self.cursor.y {
-            let x_render = self.x_render();
-            let cursor_x = self.cursor.x;
-            let line = &mut self.file.lines[self.cursor.y];
-            if line.chars.len() > cursor_x {
-                line.insert(key as char, cursor_x, x_render);
-            } else {
-                line.push(key as char);
-            }
-        } else {
-            let line: String = (key as char).into();
-            self.file.add_new_line(&line, true);
-        }
-
-    }
-
-    fn write_prompt(&mut self, key: u8) {
-        let c = key as char;
-        if c == '\t' {
-            return
-        }
-        self.status_bar.prompt_insert(c, self.cursor.x);
+        let f = self.input_mode.write();
+        f(self, key as char);
     }
 
     fn save(&mut self) {
@@ -445,93 +289,30 @@ impl Editor {
             });
         self.status_bar.set_message(format!("file name to save: "));
         self.status_bar.set_prompt(format!("{}/", dir.display()));
-        self.change_input_mode(InputMode::Prompt(PromptType::Save));
+        self.change_input_mode(Prompt);
     }
 
     fn enter_pressed(&mut self) {
-        match self.input_mode {
-            InputMode::Normal => {
-                self.file.split_line(self.cursor.y, self.cursor.x);
-                self.move_cursor_normal(MoveKey::ArrowRight);
-            },
-            InputMode::Prompt(_) => { self.commit() }
-        }
+        let f = self.input_mode.enter_pressed();
+        f(self)
     }
 
     fn delete_pressed(&mut self) {
-        match self.input_mode {
-            InputMode::Normal => {
-                let max_x = self.max_x();
-                if self.cursor.x == max_x && self.cursor.y + 1 == self.file.lines.len() {
-                    return
-                }
-
-                if self.cursor.x == max_x {
-                    self.file.merge_lines(self.cursor.y + 1, self.cursor.y);
-                    return
-                }
-
-                self.file.lines[self.cursor.y].remove(self.cursor.x)
-            },
-            InputMode::Prompt(_) => {
-                self.status_bar.prompt_delete(self.cursor.x);
-            }
-        }
+        let f = self.input_mode.delete_pressed();
+        f(self)
     }
 
     fn backsapce_pressed(&mut self) {
-        match self.input_mode {
-            InputMode::Normal => {
-                if self.cursor.x == 0 && self.cursor.y == 0 {
-                    return
-                }
-
-                if self.cursor.x == 0 {
-                    let cursor_y = self.cursor.y;
-                    self.move_cursor_normal(MoveKey::ArrowLeft);
-                    self.file.merge_lines(cursor_y, self.cursor.y);
-                    return
-                }
-
-                self.move_cursor_normal(MoveKey::ArrowLeft);
-                self.file.lines[self.cursor.y].remove(self.cursor.x);
-                return
-            },
-            InputMode::Prompt(_) => {
-                if self.status_bar.prompt_backspace(self.cursor.x).is_some() {
-                    self.move_cursor_prompt(MoveKey::ArrowLeft)
-                }
-            }
-        }
+        let f = self.input_mode.backspace_pressed();
+        f(self)
     }
 
-    fn commit(&mut self) {
-        match self.input_mode {
-            InputMode::Prompt(PromptType::Save) => {
-                let file_name = self.status_bar.take_prompt();
-                self.file.set_name(file_name);
-                self.save()
-            },
-            InputMode::Normal => {}
-        }
-
-        self.change_input_mode(InputMode::Normal);
-    }
-
-    fn change_input_mode(&mut self, target: InputMode) {
-        match target {
-            InputMode::Normal => {
-                self.cursor.x = self.cursor.x_normal;
-                self.status_bar.set_timeout(time::Duration::from_secs(5))
-            },
-            InputMode::Prompt(_) => {
-                self.cursor.x_normal = self.cursor.x;
-                self.cursor.x = self.message().len();
-                self.status_bar.set_timeout(time::Duration::from_mins(1))
-            },
-        };
-
-        self.input_mode = target;
+    fn change_input_mode<T>(&mut self, input_mode: T)
+    where
+        T: InputMode
+    {
+        let f = input_mode.set();
+        f(self);
     }
 
     fn message(&self) -> String {

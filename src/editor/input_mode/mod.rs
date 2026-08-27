@@ -1,19 +1,17 @@
-use std::cmp;
+use std::{cmp, time};
 use super::Editor;
 use super::super::common::*;
 
-enum PromptType {
-    Save,
-    Quit
-}
 
-struct Normal;
-struct Prompt {
-    prompt_type: PromptType
-}
+pub struct Normal;
+pub struct Prompt;
 
-pub fn default_mode() -> Box<dyn InputMode> {
+pub fn normal_mode() -> Box<dyn InputMode> {
     Box::new(Normal {})
+}
+
+fn prompt_mode() -> Box<dyn InputMode> {
+    Box::new(Prompt {})
 }
 
 pub trait InputMode {
@@ -24,6 +22,7 @@ pub trait InputMode {
     fn enter_pressed(&self)     -> fn(&mut Editor);
     fn delete_pressed(&self)    -> fn(&mut Editor);
     fn backspace_pressed(&self) -> fn(&mut Editor);
+    fn set(&self)               -> fn(&mut Editor);
 }
 
 impl InputMode for Normal {
@@ -73,6 +72,7 @@ impl InputMode for Normal {
                 let line: String = (c).into();
                 editor.file.add_new_line(&line, true);
             }
+            editor.move_cursor(MoveKey::ArrowRight)
         }
     }
 
@@ -180,6 +180,14 @@ impl InputMode for Normal {
         }
     }
 
+    fn set(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
+            editor.cursor.x = editor.cursor.x_normal;
+            editor.status_bar.set_timeout(time::Duration::from_secs(5));
+            editor.input_mode = normal_mode();
+        }
+    }
+
 }
 
 impl InputMode for Prompt {
@@ -201,6 +209,7 @@ impl InputMode for Prompt {
                 return
             }
             editor.status_bar.prompt_insert(c, editor.cursor.x);
+            editor.move_cursor(MoveKey::ArrowRight)
         }
     }
 
@@ -235,7 +244,8 @@ impl InputMode for Prompt {
         |editor: &mut Editor| {
             let file_name = editor.status_bar.take_prompt();
             editor.file.set_name(file_name);
-            editor.save()
+            editor.save();
+            editor.input_mode = normal_mode()
         }
     }
 
@@ -253,4 +263,12 @@ impl InputMode for Prompt {
         }
     }
 
+    fn set(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
+            editor.cursor.x_normal = editor.cursor.x;
+            editor.cursor.x = editor.message().len();
+            editor.status_bar.set_timeout(time::Duration::from_mins(1));
+            editor.input_mode = prompt_mode()
+        }
+    }
 }
