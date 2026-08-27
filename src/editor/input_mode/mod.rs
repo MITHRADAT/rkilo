@@ -17,10 +17,9 @@ pub trait InputMode {
     fn scroll(&self, editor: &mut Editor);
     fn write(&self, editor: &mut Editor, c: char);
     fn move_cursor(&self, editor: &mut Editor, key: MoveKey);
-    fn enter_pressed(&self);
-    fn delete_pressed(&self);
-    fn backspace_pressed(&self);
-    fn commit(&self);
+    fn enter_pressed(&self, editor: &mut Editor);
+    fn delete_pressed(&self, editor: &mut Editor);
+    fn backspace_pressed(&self, editor: &mut Editor);
 }
 
 impl InputMode for Normal {
@@ -127,21 +126,42 @@ impl InputMode for Normal {
         }
     }
 
-    fn enter_pressed(&self) {
-
+    fn enter_pressed(&self, editor: &mut Editor) {
+        editor.file.split_line(editor.cursor.y, editor.cursor.x);
+        self.move_cursor(editor, MoveKey::ArrowRight);
     }
 
-    fn delete_pressed(&self) {
+    fn delete_pressed(&self, editor: &mut Editor) {
+        let max_x = editor.max_x();
+        if editor.cursor.x == max_x && editor.cursor.y + 1 == editor.file.lines.len() {
+            return
+        }
 
+        if editor.cursor.x == max_x {
+            editor.file.merge_lines(editor.cursor.y + 1, editor.cursor.y);
+            return
+        }
+
+        editor.file.lines[editor.cursor.y].remove(editor.cursor.x)
     }
 
-    fn backspace_pressed(&self) {
+    fn backspace_pressed(&self, editor: &mut Editor) {
+        if editor.cursor.x == 0 && editor.cursor.y == 0 {
+            return
+        }
 
+        if editor.cursor.x == 0 {
+            let cursor_y = editor.cursor.y;
+            self.move_cursor(editor, MoveKey::ArrowLeft);
+            editor.file.merge_lines(cursor_y, editor.cursor.y);
+            return
+        }
+
+        self.move_cursor(editor, MoveKey::ArrowLeft);
+        editor.file.lines[editor.cursor.y].remove(editor.cursor.x);
+        return
     }
 
-    fn commit(&self) {
-
-    }
 }
 
 impl InputMode for Prompt {
@@ -187,19 +207,26 @@ impl InputMode for Prompt {
         }
     }
 
-    fn enter_pressed(&self) {
-
+    fn enter_pressed(&self, editor: &mut Editor) {
+        self.commit(editor);
     }
 
-    fn delete_pressed(&self) {
-
+    fn delete_pressed(&self, editor: &mut Editor) {
+        editor.status_bar.prompt_delete(editor.cursor.x);
     }
 
-    fn backspace_pressed(&self) {
-
+    fn backspace_pressed(&self, editor: &mut Editor) {
+        if editor.status_bar.prompt_backspace(editor.cursor.x).is_some() {
+            self.move_cursor(editor, MoveKey::ArrowLeft)
+        }
     }
 
-    fn commit(&self) {
+}
 
+impl Prompt {
+    fn commit(&self, editor: &mut Editor) {
+        let file_name = editor.status_bar.take_prompt();
+        editor.file.set_name(file_name);
+        editor.save()
     }
 }
