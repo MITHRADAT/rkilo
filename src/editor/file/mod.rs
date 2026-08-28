@@ -1,4 +1,4 @@
-use std::{fs, io::{self, Write}};
+use std::{fs, io::{self, Write}, time};
 use super::super::common::*;
 
 pub struct File {
@@ -9,7 +9,7 @@ pub struct File {
 impl File {
     pub fn save(&mut self) -> SaveStatus {
         if self.name.is_some() {
-            self.write_to_disk()
+            self.persist()
         } else {
             SaveStatus::NameRequest
         }
@@ -19,26 +19,31 @@ impl File {
         self.name = Some(name)
     }
 
-    fn write_to_disk(&mut self) -> SaveStatus {
+    fn persist(&mut self) -> SaveStatus {
         let Some(first_dirty) = self.lines.iter()
             .position(|line| line.dirty)
         else { return SaveStatus::NoChanges };
 
-        let result = || -> io::Result<()> {
-            let file_name = self.name.as_ref().unwrap();
-            let temp_name = format!("{}.temp", file_name);
+        let mut result = || -> io::Result<()> {
+            let file_name = self.name.as_ref()
+                .ok_or_else(|| io::Error::new(
+                    io::ErrorKind::InvalidInput, "can not find a file name to save"))?;
+            let temp_name = format!("{}.rkilotemp{:?}", file_name, time::SystemTime::now());
             let mut temp = fs::File::create(&temp_name)?;
 
             for line in &self.lines[..first_dirty] {
-                temp.write_all(&line.original)?;
+                temp.write_all(&line.persist)?;
                 temp.write_all(b"\n")?
             }
 
             let mut buffer = [0; 4];
-            for line in &self.lines[first_dirty..] {
+            for line in &mut self.lines[first_dirty..] {
+                line.persist.clear();
                 for c in &line.chars {
                     buffer = [0; 4];
-                    temp.write_all(c.encode_utf8(&mut buffer).as_bytes())?
+                    let bytes = c.encode_utf8(&mut buffer).as_bytes();
+                    line.persist.extend_from_slice(bytes);
+                    temp.write_all(bytes)?
                 }
                 temp.write_all(b"\n")?
             }
@@ -101,7 +106,7 @@ impl File {
 pub struct Line {
     pub chars : Vec<char>,
     pub render: Vec<char>,
-    pub original: Vec<u8>,
+    pub persist: Vec<u8>,
     pub dirty: bool
 }
 
@@ -110,7 +115,7 @@ impl Line {
         let mut new_line = Self {
             chars: line.chars().collect(),
             render: vec![],
-            original: line.as_bytes().to_vec(),
+            persist: line.as_bytes().to_vec(),
             dirty: dirty
         };
         new_line.render();
@@ -121,12 +126,12 @@ impl Line {
         Self {
             chars: vec![],
             render: vec![],
-            original: vec![],
+            persist: vec![],
             dirty: true
         }
     }
 
-    pub fn insert(&mut self, c: char, chars_index: usize, render_index: usize) {
+    pub fn insert(&mut self, c: char, chars_index: usize) {
         self.chars.insert(chars_index, c);
         self.render();
         self.dirty = true;

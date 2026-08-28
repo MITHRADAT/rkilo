@@ -60,11 +60,10 @@ impl InputMode for Normal {
         |editor: &mut Editor, c: char| {
             let cursor_y = editor.cursor.y;
             if editor.file.lines.len() > cursor_y {
-                let x_render = editor.x_render();
                 let cursor_x = editor.cursor.x;
                 let line = &mut editor.file.lines[cursor_y];
                 if line.chars.len() > cursor_x {
-                    line.insert(c, cursor_x, x_render);
+                    line.insert(c, cursor_x);
                 } else {
                     line.push(c);
                 }
