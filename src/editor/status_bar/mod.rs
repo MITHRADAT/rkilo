@@ -22,6 +22,7 @@ impl StatusBar {
     }
 
     pub fn set_message(&mut self, msg: String) {
+        self.prompt.clear();
         self.msg = msg;
         self.init = time::SystemTime::now()
     }

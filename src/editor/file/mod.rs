@@ -19,6 +19,10 @@ impl File {
         self.name = Some(name)
     }
 
+    pub fn clear_name(&mut self) {
+        self.name = None
+    }
+
     fn persist(&mut self) -> SaveStatus {
         let Some(first_dirty) = self.lines.iter()
             .position(|line| line.dirty)
@@ -28,12 +32,14 @@ impl File {
             let full_name = self.name.as_ref()
                 .ok_or_else(|| io::Error::new(
                     io::ErrorKind::InvalidInput, "can not find a file name to save"))?;
-            let file_name = full_name
+
+            full_name
                 .rsplit('/')
                 .next()
                 .filter(|name| !name.is_empty())
                 .ok_or(io::Error::new(
                     io::ErrorKind::InvalidInput, "can not find a file name to save"))?;
+
             let temp_name = format!("{}.rkilotemp{:?}", full_name, time::SystemTime::now());
             let mut temp = fs::File::create(&temp_name)?;
 

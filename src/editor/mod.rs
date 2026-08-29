@@ -280,9 +280,10 @@ impl Editor {
                 self.change_input_mode(Prompt(InnerType::Save))
             }
             SaveStatus::Fail(error) => {
+                self.file.clear_name();
                 self.status_bar.set_message(
                     format!("error occurred while saving: {}", error));
-                self.change_input_mode(Prompt(InnerType::Save))
+                self.change_input_mode(Normal)
             }
         }
     }
