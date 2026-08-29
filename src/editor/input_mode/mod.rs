@@ -217,7 +217,7 @@ impl InputMode for Prompt {
         |editor: &mut Editor, input: Key| {
             match input {
                 Key::Move(key)   => { editor.move_cursor(key) },
-                Key::Quit        => { editor.change_input_mode(Normal) },
+                Key::Quit        => { Prompt::quit(editor) },
                 Key::Save        => {  },
                 Key::Enter       => { editor.enter_pressed() },
                 Key::Delete      => { editor.delete_pressed() },
@@ -250,7 +250,7 @@ impl InputMode for Prompt {
                             editor.end(DieReason::Quit)
                         }
                         if c == 'n' || c == 'N' {
-                            editor.change_input_mode(Normal)
+                            Prompt::quit(editor)
                         }
                     }
                 }
@@ -328,5 +328,12 @@ impl InputMode for Prompt {
                 editor.status_bar.set_timeout(time::Duration::from_mins(1));
                 editor.input_mode = Box::new(self)
             })
+    }
+}
+
+impl Prompt {
+    fn quit(editor: &mut Editor) {
+        editor.change_input_mode(Normal);
+        editor.status_bar.clear()
     }
 }

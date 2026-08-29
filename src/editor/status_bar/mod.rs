@@ -80,12 +80,13 @@ impl StatusBar {
         return 0
     }
 
-    pub fn prompt_len(&self) -> usize {
-        self.prompt.len()
-    }
-
     pub fn set_timeout(&mut self, timeout: time::Duration) {
         self.timeout = timeout
+    }
+
+    pub fn clear(&mut self) {
+        self.prompt.clear();
+        self.msg.clear();
     }
 
     pub fn set_default_timeout(&mut self) {
