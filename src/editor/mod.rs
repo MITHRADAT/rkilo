@@ -267,18 +267,22 @@ impl Editor {
                         self.end(DieReason::Panic("can not get the file name.".to_string()))
                     });
                 self.status_bar.set_message(
-                    format!("{} saved successfully!", file_name))
+                    format!("{} saved successfully!", file_name));
+                self.change_input_mode(Normal)
             },
             SaveStatus::NoChanges => {
                 self.status_bar.set_message(
-                    format!("no changes to save!"))
+                    format!("no changes to save!"));
+                self.change_input_mode(Normal)
             },
             SaveStatus::NameRequest => {
-                self.request_file_name()
+                self.request_file_name();
+                self.change_input_mode(Prompt(InnerType::Save));
             }
             SaveStatus::Fail(error) => {
                 self.status_bar.set_message(
-                    format!("error occurred while saving: {}", error))
+                    format!("error occurred while saving: {}", error));
+                self.change_input_mode(Prompt(InnerType::Save));
             }
         }
     }
@@ -290,7 +294,6 @@ impl Editor {
             });
         self.status_bar.set_message(format!("file name to save: "));
         self.status_bar.set_prompt(format!("{}/", dir.display()));
-        self.change_input_mode(Prompt(InnerType::Save));
     }
 
     fn enter_pressed(&mut self) {

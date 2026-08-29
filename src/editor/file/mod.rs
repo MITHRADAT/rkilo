@@ -25,10 +25,16 @@ impl File {
         else { return SaveStatus::NoChanges };
 
         let mut result = || -> io::Result<()> {
-            let file_name = self.name.as_ref()
+            let full_name = self.name.as_ref()
                 .ok_or_else(|| io::Error::new(
                     io::ErrorKind::InvalidInput, "can not find a file name to save"))?;
-            let temp_name = format!("{}.rkilotemp{:?}", file_name, time::SystemTime::now());
+            let file_name = full_name
+                .rsplit('/')
+                .next()
+                .filter(|name| !name.is_empty())
+                .ok_or(io::Error::new(
+                    io::ErrorKind::InvalidInput, "can not find a file name to save"))?;
+            let temp_name = format!("{}.rkilotemp{:?}", full_name, time::SystemTime::now());
             let mut temp = fs::File::create(&temp_name)?;
 
             for line in &self.lines[..first_dirty] {
@@ -51,7 +57,7 @@ impl File {
             temp.sync_all()?;
             drop(temp);
 
-            fs::rename(temp_name, file_name)?;
+            fs::rename(temp_name, full_name)?;
             Ok(())
         };
 

@@ -196,7 +196,7 @@ impl InputMode for Normal {
     fn set(self) -> Box<dyn FnOnce(&mut Editor)> {
         Box::new(
             |editor: &mut Editor| {
-                editor.cursor.x = editor.cursor.x_normal;
+                editor.cursor.restore_x();
                 editor.status_bar.clear();
                 editor.input_mode = Box::new(self)
             })
@@ -298,7 +298,6 @@ impl InputMode for Prompt {
                     let file_name = editor.status_bar.take_prompt();
                     editor.file.set_name(file_name);
                     editor.save();
-                    editor.change_input_mode(Normal);
                 }
             },
             InnerType::Quit => {
@@ -324,7 +323,7 @@ impl InputMode for Prompt {
     fn set(self) -> Box<dyn FnOnce(&mut Editor)> {
         Box::new(
             |editor: &mut Editor| {
-                editor.cursor.x_normal = editor.cursor.x;
+                editor.cursor.store_x();
                 editor.cursor.x = editor.message().len();
                 editor.status_bar.set_timeout(time::Duration::from_mins(1));
                 editor.input_mode = Box::new(self)

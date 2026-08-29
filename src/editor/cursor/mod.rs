@@ -4,7 +4,7 @@ pub struct Cursor {
     pub x_offset : usize,
     pub y_offset : usize,
     pub horizon  : usize,
-    pub x_normal : usize,
+        stored_x : Option<usize>,
 }
 
 impl Cursor {
@@ -15,7 +15,22 @@ impl Cursor {
             x_offset: 0,
             y_offset: 0,
             horizon : 0,
-            x_normal: 0,
+            stored_x: None,
         }
+    }
+
+    pub fn store_x(&mut self) {
+        if self.stored_x.is_some() {
+            return
+        }
+        self.stored_x = Some(self.x)
+    }
+
+    pub fn restore_x(&mut self) {
+        let stored_x = self.stored_x.take();
+        if stored_x.is_none() {
+            return
+        }
+        self.x = stored_x.unwrap()
     }
 }
