@@ -258,28 +258,35 @@ impl InputMode for Prompt {
     }
 
     fn move_cursor(&self) -> fn(&mut Editor, MoveKey) {
-        |editor: &mut Editor, key: MoveKey| {
-            match key {
-                MoveKey::ArrowLeft => {
-                    if editor.status_bar.prompt_index(editor.cursor.x) > 0 {
-                        editor.cursor.x -= 1;
+        match self.0 {
+            InnerType::Save => {
+                |editor: &mut Editor, key: MoveKey| {
+                    match key {
+                        MoveKey::ArrowLeft => {
+                            if editor.status_bar.prompt_index(editor.cursor.x) > 0 {
+                                editor.cursor.x -= 1;
+                            }
+                        },
+                        MoveKey::ArrowRight => {
+                            if editor.cursor.x < editor.message().len() {
+                                editor.cursor.x += 1;
+                            }
+                        },
+                        MoveKey::Home => {
+                            editor.cursor.x = 0
+                        },
+                        MoveKey::End => {
+                            editor.cursor.x = editor.max_x()
+                        },
+                        MoveKey::ArrowUp   => { return },
+                        MoveKey::ArrowDown => { return },
+                        MoveKey::PageUp    => { return },
+                        MoveKey::PageDown  => { return },
                     }
-                },
-                MoveKey::ArrowRight => {
-                    if editor.cursor.x < editor.message().len() {
-                        editor.cursor.x += 1;
-                    }
-                },
-                MoveKey::Home => {
-                    editor.cursor.x = 0
-                },
-                MoveKey::End => {
-                    editor.cursor.x = editor.max_x()
-                },
-                MoveKey::ArrowUp   => { return },
-                MoveKey::ArrowDown => { return },
-                MoveKey::PageUp    => { return },
-                MoveKey::PageDown  => { return },
+                }
+            },
+            InnerType::Quit => {
+                |_: &mut Editor, _: MoveKey| {}
             }
         }
     }
