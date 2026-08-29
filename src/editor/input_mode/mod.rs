@@ -285,11 +285,18 @@ impl InputMode for Prompt {
     }
 
     fn enter_pressed(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            let file_name = editor.status_bar.take_prompt();
-            editor.file.set_name(file_name);
-            editor.save();
-            editor.change_input_mode(Normal);
+        match self.0 {
+            InnerType::Save => {
+                |editor: &mut Editor| {
+                    let file_name = editor.status_bar.take_prompt();
+                    editor.file.set_name(file_name);
+                    editor.save();
+                    editor.change_input_mode(Normal);
+                }
+            },
+            InnerType::Quit => {
+                |_: &mut Editor| {}
+            }
         }
     }
 
