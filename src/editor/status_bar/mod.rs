@@ -3,7 +3,6 @@ use std::time;
 pub struct StatusBar {
     msg: String,
     prompt: Vec<char>,
-    timeout: time::Duration,
     init: time::SystemTime
 }
 
@@ -12,7 +11,6 @@ impl StatusBar {
         Self {
             msg: String::from(msg),
             prompt: vec![],
-            timeout: StatusBar::default_timeout(),
             init: time::SystemTime::now()
         }
     }
@@ -29,7 +27,7 @@ impl StatusBar {
 
     pub fn message(&self) -> Result<String, time::SystemTimeError> {
         if time::SystemTime::now()
-            .duration_since(self.init)? < self.timeout {
+            .duration_since(self.init)? < StatusBar::default_timeout() {
                 let prompt: String = self.prompt.iter().collect();
                 return Ok(format!("{}{}", self.msg, prompt))
             }
@@ -69,7 +67,6 @@ impl StatusBar {
     pub fn take_prompt(&mut self) -> String {
         let prompt: String = self.prompt.iter().collect();
         self.prompt.clear();
-        self.timeout = StatusBar::default_timeout();
         prompt
     }
 
@@ -80,17 +77,9 @@ impl StatusBar {
         return 0
     }
 
-    pub fn set_timeout(&mut self, timeout: time::Duration) {
-        self.timeout = timeout
-    }
-
     pub fn clear(&mut self) {
         self.prompt.clear();
         self.msg.clear();
-    }
-
-    pub fn set_default_timeout(&mut self) {
-        self.timeout = StatusBar::default_timeout()
     }
 
     pub fn set_init(&mut self) {

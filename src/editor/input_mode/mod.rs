@@ -197,7 +197,6 @@ impl InputMode for Normal {
         Box::new(
             |editor: &mut Editor| {
                 editor.cursor.restore_x();
-                editor.status_bar.set_default_timeout();
                 editor.input_mode = Box::new(self)
             })
     }
@@ -325,7 +324,6 @@ impl InputMode for Prompt {
             |editor: &mut Editor| {
                 editor.cursor.store_x();
                 editor.cursor.x = editor.message().len();
-                editor.status_bar.set_timeout(time::Duration::from_mins(1));
                 editor.input_mode = Box::new(self)
             })
     }
