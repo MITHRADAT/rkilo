@@ -77,6 +77,9 @@ impl Editor {
             Key::Char(c)     => { self.write(c)}
             _                => {}
         }
+
+        let f = self.input_mode.key_processed();
+        f(self)
     }
 
     fn read_key(&self) -> Key {

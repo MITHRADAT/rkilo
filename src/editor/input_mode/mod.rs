@@ -19,7 +19,8 @@ pub trait InputMode {
     fn enter_pressed(&self)     -> fn(&mut Editor);
     fn delete_pressed(&self)    -> fn(&mut Editor);
     fn backspace_pressed(&self) -> fn(&mut Editor);
-    fn set(self) -> Box<dyn FnOnce(&mut Editor)>;
+    fn set(self)                -> Box<dyn FnOnce(&mut Editor)>;
+    fn key_processed(&self)     -> fn(&mut Editor);
 }
 
 impl InputMode for Normal {
@@ -186,6 +187,10 @@ impl InputMode for Normal {
             })
     }
 
+    fn key_processed(&self) -> fn(&mut Editor) {
+        |_: &mut Editor| {}
+    }
+
 }
 
 impl InputMode for Prompt {
@@ -283,5 +288,11 @@ impl InputMode for Prompt {
                 editor.status_bar.set_timeout(time::Duration::from_mins(1));
                 editor.input_mode = Box::new(self)
             })
+    }
+
+    fn key_processed(&self) -> fn(&mut Editor) {
+        |editor: &mut Editor| {
+            editor.status_bar.set_init()
+        }
     }
 }
