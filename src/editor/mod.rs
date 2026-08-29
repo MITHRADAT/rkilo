@@ -67,19 +67,8 @@ impl Editor {
 
     pub fn process_keypress(&mut self) {
         let input = self.read_key();
-        match input {
-            Key::Move(key)   => { self.move_cursor(key) },
-            Key::Quit        => { self.quit() },
-            Key::Save        => { self.save() },
-            Key::Enter       => { self.enter_pressed() },
-            Key::Delete      => { self.delete_pressed() },
-            Key::BackSpace   => { self.backspace_pressed() }
-            Key::Char(c)     => { self.write(c)}
-            _                => {}
-        }
-
-        let f = self.input_mode.key_processed();
-        f(self)
+        let f = self.input_mode.process_keypress();
+        f(self, input);
     }
 
     fn read_key(&self) -> Key {

@@ -13,6 +13,7 @@ pub struct Prompt(pub InnerType);
 
 pub trait InputMode {
     fn cursor_position(&self)   -> fn(&Editor) -> (usize, usize);
+    fn process_keypress(&self)  -> fn(&mut Editor, input: Key);
     fn scroll(&self)            -> fn(&mut Editor);
     fn write(&self)             -> Box<dyn Fn(&mut Editor, char)>;
     fn move_cursor(&self)       -> fn(&mut Editor, MoveKey);
@@ -20,7 +21,6 @@ pub trait InputMode {
     fn delete_pressed(&self)    -> fn(&mut Editor);
     fn backspace_pressed(&self) -> fn(&mut Editor);
     fn set(self)                -> Box<dyn FnOnce(&mut Editor)>;
-    fn key_processed(&self)     -> fn(&mut Editor);
 }
 
 impl InputMode for Normal {
@@ -29,6 +29,21 @@ impl InputMode for Normal {
             let x =  editor.x_render() - editor.cursor.x_offset + 1;
             let y = editor.cursor.y - editor.cursor.y_offset + 1;
             (x, y)
+        }
+    }
+
+    fn process_keypress(&self) -> fn(&mut Editor, input: Key) {
+        |editor: &mut Editor, input: Key| {
+            match input {
+                Key::Move(key)   => { editor.move_cursor(key) },
+                Key::Quit        => { editor.quit() },
+                Key::Save        => { editor.save() },
+                Key::Enter       => { editor.enter_pressed() },
+                Key::Delete      => { editor.delete_pressed() },
+                Key::BackSpace   => { editor.backspace_pressed() }
+                Key::Char(c)     => { editor.write(c)}
+                _                => {}
+            }
         }
     }
 
@@ -187,10 +202,6 @@ impl InputMode for Normal {
             })
     }
 
-    fn key_processed(&self) -> fn(&mut Editor) {
-        |_: &mut Editor| {}
-    }
-
 }
 
 impl InputMode for Prompt {
@@ -199,6 +210,22 @@ impl InputMode for Prompt {
             let x = editor.cursor.x + 1;
             let y = editor.screen.rows() + 2;
             (x, y)
+        }
+    }
+
+    fn process_keypress(&self) -> fn(&mut Editor, input: Key) {
+        |editor: &mut Editor, input: Key| {
+            match input {
+                Key::Move(key)   => { editor.move_cursor(key) },
+                Key::Quit        => { editor.change_input_mode(Normal) },
+                Key::Save        => {  },
+                Key::Enter       => { editor.enter_pressed() },
+                Key::Delete      => { editor.delete_pressed() },
+                Key::BackSpace   => { editor.backspace_pressed() }
+                Key::Char(c)     => { editor.write(c)}
+                _                => {}
+            }
+            editor.status_bar.set_init();
         }
     }
 
@@ -288,11 +315,5 @@ impl InputMode for Prompt {
                 editor.status_bar.set_timeout(time::Duration::from_mins(1));
                 editor.input_mode = Box::new(self)
             })
-    }
-
-    fn key_processed(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            editor.status_bar.set_init()
-        }
     }
 }
