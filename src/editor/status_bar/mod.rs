@@ -19,7 +19,6 @@ impl StatusBar {
 
     pub fn set_prompt(&mut self, prompt: String) {
         self.prompt = prompt.chars().collect();
-        self.init = time::SystemTime::now();
     }
 
     pub fn set_message(&mut self, msg: String) {
@@ -39,11 +38,9 @@ impl StatusBar {
     pub fn prompt_insert(&mut self, c: char, cursor_x: usize) {
         let prompt_index = self.prompt_index(cursor_x);
         self.prompt.insert(prompt_index, c);
-        self.init = time::SystemTime::now()
     }
 
     pub fn prompt_delete(&mut self, cursor_x: usize) -> Option<char> {
-        self.init = time::SystemTime::now();
         let prompt_len = self.prompt.len();
         if prompt_len == 0 {
             return None
@@ -57,7 +54,6 @@ impl StatusBar {
     }
 
     pub fn prompt_backspace(&mut self, cursor_x: usize) -> Option<char> {
-        self.init = time::SystemTime::now();
         if self.prompt.len() == 0 {
             return None
         }
