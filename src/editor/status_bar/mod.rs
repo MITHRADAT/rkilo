@@ -91,6 +91,13 @@ impl StatusBar {
         self.timeout = timeout
     }
 
+    pub fn clear(&mut self) {
+        self.msg.clear();
+        self.prompt.clear();
+        self.timeout = StatusBar::default_timeout();
+        self.init = time::SystemTime::now()
+    }
+
     fn default_timeout() -> time::Duration {
         time::Duration::from_secs(5)
     }

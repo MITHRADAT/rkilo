@@ -2,6 +2,7 @@ use std::{cmp, time};
 use super::Editor;
 use super::super::common::*;
 
+#[derive(Copy, Clone)]
 pub enum InnerType {
     Save,
     Quit
@@ -13,7 +14,7 @@ pub struct Prompt(pub InnerType);
 pub trait InputMode {
     fn cursor_position(&self)   -> fn(&Editor) -> (usize, usize);
     fn scroll(&self)            -> fn(&mut Editor);
-    fn write(&self)             -> fn(&mut Editor, char);
+    fn write(&self)             -> Box<dyn Fn(&mut Editor, char)>;
     fn move_cursor(&self)       -> fn(&mut Editor, MoveKey);
     fn enter_pressed(&self)     -> fn(&mut Editor);
     fn delete_pressed(&self)    -> fn(&mut Editor);
@@ -52,23 +53,24 @@ impl InputMode for Normal {
         }
     }
 
-    fn write(&self) -> fn(&mut Editor, char) {
-        |editor: &mut Editor, c: char| {
-            let cursor_y = editor.cursor.y;
-            if editor.file.lines.len() > cursor_y {
-                let cursor_x = editor.cursor.x;
-                let line = &mut editor.file.lines[cursor_y];
-                if line.chars.len() > cursor_x {
-                    line.insert(c, cursor_x);
+    fn write(&self) -> Box<dyn Fn(&mut Editor, char)> {
+        Box::new(
+            |editor: &mut Editor, c: char| {
+                let cursor_y = editor.cursor.y;
+                if editor.file.lines.len() > cursor_y {
+                    let cursor_x = editor.cursor.x;
+                    let line = &mut editor.file.lines[cursor_y];
+                    if line.chars.len() > cursor_x {
+                        line.insert(c, cursor_x);
+                    } else {
+                        line.push(c);
+                    }
                 } else {
-                    line.push(c);
+                    let line: String = (c).into();
+                    editor.file.add_new_line(&line, true);
                 }
-            } else {
-                let line: String = (c).into();
-                editor.file.add_new_line(&line, true);
-            }
-            editor.move_cursor(MoveKey::ArrowRight)
-        }
+                editor.move_cursor(MoveKey::ArrowRight)
+            })
     }
 
     fn move_cursor(&self) -> fn(&mut Editor, MoveKey) {
@@ -179,7 +181,7 @@ impl InputMode for Normal {
         Box::new(
             |editor: &mut Editor| {
                 editor.cursor.x = editor.cursor.x_normal;
-                editor.status_bar.set_timeout(time::Duration::from_secs(5));
+                editor.status_bar.clear();
                 editor.input_mode = Box::new(self)
             })
     }
@@ -199,14 +201,28 @@ impl InputMode for Prompt {
         |_: &mut Editor| {}
     }
 
-    fn write(&self) -> fn(&mut Editor, char) {
-        |editor: &mut Editor, c: char| {
-            if c == '\t' {
-                return
-            }
-            editor.status_bar.prompt_insert(c, editor.cursor.x);
-            editor.move_cursor(MoveKey::ArrowRight)
-        }
+    fn write(&self) -> Box<dyn Fn(&mut Editor, char)> {
+        let inner_type = self.0;
+        Box::new(
+            move |editor: &mut Editor, c: char| {
+                if c == '\t' {
+                    return
+                }
+                match inner_type {
+                    InnerType::Save => {
+                        editor.status_bar.prompt_insert(c, editor.cursor.x);
+                        editor.move_cursor(MoveKey::ArrowRight)
+                    },
+                    InnerType::Quit => {
+                        if c == 'y' || c == 'Y' {
+                            editor.end(DieReason::Quit)
+                        }
+                        if c == 'n' || c == 'N' {
+                            editor.change_input_mode(Normal)
+                        }
+                    }
+                }
+            })
     }
 
     fn move_cursor(&self) -> fn(&mut Editor, MoveKey) {

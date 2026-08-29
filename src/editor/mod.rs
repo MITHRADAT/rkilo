@@ -69,7 +69,7 @@ impl Editor {
         let input = self.read_key();
         match input {
             Key::Move(key)   => { self.move_cursor(key) },
-            Key::Quit        => { self.end(DieReason::Quit) },
+            Key::Quit        => { self.quit() },
             Key::Save        => { self.save() },
             Key::Enter       => { self.enter_pressed() },
             Key::Delete      => { self.delete_pressed() },
@@ -256,6 +256,15 @@ impl Editor {
     fn write(&mut self, key: u8) {
         let f = self.input_mode.write();
         f(self, key as char);
+    }
+
+    fn quit(&mut self) {
+        if self.file.is_dirty() {
+            self.status_bar.set_message(format!("there are some unsaved changes. are you sure? (y/n)"));
+            self.change_input_mode(Prompt(InnerType::Quit));
+        } else {
+            self.end(DieReason::Quit)
+        }
     }
 
     fn save(&mut self) {

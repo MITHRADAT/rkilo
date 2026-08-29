@@ -101,6 +101,10 @@ impl File {
         to.dirty = true;
         to.render()
     }
+
+    pub fn is_dirty(&self) -> bool {
+        self.lines.iter().any(|line| line.dirty)
+    }
 }
 
 pub struct Line {
