@@ -2,17 +2,13 @@ use std::{cmp, time};
 use super::Editor;
 use super::super::common::*;
 
+pub enum InnerType {
+    Save,
+    Quit
+}
 
 pub struct Normal;
-pub struct Prompt;
-
-pub fn normal_mode() -> Box<dyn InputMode> {
-    Box::new(Normal {})
-}
-
-fn prompt_mode() -> Box<dyn InputMode> {
-    Box::new(Prompt {})
-}
+pub struct Prompt(pub InnerType);
 
 pub trait InputMode {
     fn cursor_position(&self)   -> fn(&Editor) -> (usize, usize);
@@ -22,7 +18,7 @@ pub trait InputMode {
     fn enter_pressed(&self)     -> fn(&mut Editor);
     fn delete_pressed(&self)    -> fn(&mut Editor);
     fn backspace_pressed(&self) -> fn(&mut Editor);
-    fn set(&self)               -> fn(&mut Editor);
+    fn set(self) -> Box<dyn FnOnce(&mut Editor)>;
 }
 
 impl InputMode for Normal {
@@ -179,12 +175,13 @@ impl InputMode for Normal {
         }
     }
 
-    fn set(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            editor.cursor.x = editor.cursor.x_normal;
-            editor.status_bar.set_timeout(time::Duration::from_secs(5));
-            editor.input_mode = normal_mode();
-        }
+    fn set(self) -> Box<dyn FnOnce(&mut Editor)> {
+        Box::new(
+            |editor: &mut Editor| {
+                editor.cursor.x = editor.cursor.x_normal;
+                editor.status_bar.set_timeout(time::Duration::from_secs(5));
+                editor.input_mode = Box::new(self)
+            })
     }
 
 }
@@ -262,12 +259,13 @@ impl InputMode for Prompt {
         }
     }
 
-    fn set(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            editor.cursor.x_normal = editor.cursor.x;
-            editor.cursor.x = editor.message().len();
-            editor.status_bar.set_timeout(time::Duration::from_mins(1));
-            editor.input_mode = prompt_mode()
-        }
+    fn set(self) -> Box<dyn FnOnce(&mut Editor)> {
+        Box::new(
+            |editor: &mut Editor| {
+                editor.cursor.x_normal = editor.cursor.x;
+                editor.cursor.x = editor.message().len();
+                editor.status_bar.set_timeout(time::Duration::from_mins(1));
+                editor.input_mode = Box::new(self)
+            })
     }
 }

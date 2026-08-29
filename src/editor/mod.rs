@@ -23,7 +23,7 @@ impl Editor {
             status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save"),
             cursor: Cursor::get(),
             screen: screen,
-            input_mode: input_mode::normal_mode()
+            input_mode: Box::new(Normal)
         };
 
         editor.screen.enable_raw_mode();
@@ -289,7 +289,7 @@ impl Editor {
             });
         self.status_bar.set_message(format!("file name to save: "));
         self.status_bar.set_prompt(format!("{}/", dir.display()));
-        self.change_input_mode(Prompt);
+        self.change_input_mode(Prompt(InnerType::Save));
     }
 
     fn enter_pressed(&mut self) {
