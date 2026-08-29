@@ -197,7 +197,7 @@ impl InputMode for Normal {
         Box::new(
             |editor: &mut Editor| {
                 editor.cursor.restore_x();
-                editor.status_bar.clear();
+                editor.status_bar.set_default_timeout();
                 editor.input_mode = Box::new(self)
             })
     }

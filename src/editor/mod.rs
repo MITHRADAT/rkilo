@@ -277,12 +277,12 @@ impl Editor {
             },
             SaveStatus::NameRequest => {
                 self.request_file_name();
-                self.change_input_mode(Prompt(InnerType::Save));
+                self.change_input_mode(Prompt(InnerType::Save))
             }
             SaveStatus::Fail(error) => {
                 self.status_bar.set_message(
                     format!("error occurred while saving: {}", error));
-                self.change_input_mode(Prompt(InnerType::Save));
+                self.change_input_mode(Prompt(InnerType::Save))
             }
         }
     }
