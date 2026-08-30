@@ -16,10 +16,7 @@ impl Editor {
     pub fn init() -> Self {
         let screen = Screen::get();
         let editor = Self {
-            file  : File {
-                name: None,
-                lines: vec![],
-            },
+            file  : File::new(),
             status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save"),
             cursor: Cursor::get(),
             screen: screen,
@@ -250,12 +247,9 @@ impl Editor {
     }
 
     fn save(&mut self) {
-        match self.file.save() {
+        match self.file.persist() {
             SaveStatus::Successful => {
-                let file_name = &self.file.name.as_ref()
-                    .unwrap_or_else(|| {
-                        self.end(DieReason::Panic("can not get the file name.".to_string()))
-                    });
+                let file_name = &self.file.name.as_ref().unwrap();
                 self.status_bar.set_message(
                     format!("{} saved successfully!", file_name));
                 self.change_input_mode(Normal)
