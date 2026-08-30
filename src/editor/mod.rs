@@ -297,11 +297,6 @@ impl Editor {
         self.status_bar.set_prompt(format!("{}/", dir.display()));
     }
 
-    fn enter_pressed(&mut self) {
-        let f = self.input_mode.enter_pressed();
-        f(self)
-    }
-
     fn delete_pressed(&mut self) {
         let f = self.input_mode.delete_pressed();
         f(self)

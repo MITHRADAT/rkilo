@@ -1,4 +1,4 @@
-use std::{cmp, time};
+use std::cmp;
 use super::Editor;
 use super::super::common::*;
 
@@ -13,7 +13,7 @@ pub struct Prompt(pub InnerType);
 
 pub trait InputMode {
     fn cursor_position(&self)   -> fn(&Editor) -> (usize, usize);
-    fn process_keypress(&self)  -> fn(&mut Editor, input: Key);
+    fn process_keypress(&self)  -> Box<dyn Fn(&mut Editor, Key)>;
     fn scroll(&self)            -> fn(&mut Editor);
     fn write(&self)             -> Box<dyn Fn(&mut Editor, char)>;
     fn move_cursor(&self)       -> fn(&mut Editor, MoveKey);
@@ -32,19 +32,20 @@ impl InputMode for Normal {
         }
     }
 
-    fn process_keypress(&self) -> fn(&mut Editor, input: Key) {
-        |editor: &mut Editor, input: Key| {
-            match input {
-                Key::Move(key)   => { editor.move_cursor(key) },
-                Key::Quit        => { editor.quit() },
-                Key::Save        => { editor.save() },
-                Key::Enter       => { editor.enter_pressed() },
-                Key::Delete      => { editor.delete_pressed() },
-                Key::BackSpace   => { editor.backspace_pressed() }
-                Key::Char(c)     => { editor.write(c)}
-                _                => {}
-            }
-        }
+    fn process_keypress(&self) -> Box<dyn Fn(&mut Editor, Key)> {
+        Box::new(
+            |editor: &mut Editor, input: Key| {
+                match input {
+                    Key::Move(key)   => { editor.move_cursor(key) },
+                    Key::Quit        => { editor.quit() },
+                    Key::Save        => { editor.save() },
+                    Key::Enter       => { Normal::enter_pressed(editor) },
+                    Key::Delete      => { editor.delete_pressed() },
+                    Key::BackSpace   => { editor.backspace_pressed() }
+                    Key::Char(c)     => { editor.write(c)}
+                    _                => {}
+                }
+            })
     }
 
     fn scroll(&self) -> fn(&mut Editor) {
@@ -212,20 +213,22 @@ impl InputMode for Prompt {
         }
     }
 
-    fn process_keypress(&self) -> fn(&mut Editor, input: Key) {
-        |editor: &mut Editor, input: Key| {
-            match input {
-                Key::Move(key)   => { editor.move_cursor(key) },
-                Key::Quit        => { Prompt::quit(editor) },
-                Key::Save        => {  },
-                Key::Enter       => { editor.enter_pressed() },
-                Key::Delete      => { editor.delete_pressed() },
-                Key::BackSpace   => { editor.backspace_pressed() }
-                Key::Char(c)     => { editor.write(c)}
-                _                => {}
-            }
-            editor.status_bar.set_init();
-        }
+    fn process_keypress(&self) -> Box<dyn Fn(&mut Editor, Key)> {
+        let inner_type = self.0;
+        Box::new(
+            move |editor: &mut Editor, input: Key| {
+                match input {
+                    Key::Move(key)   => { editor.move_cursor(key) },
+                    Key::Quit        => { Prompt::quit(editor) },
+                    Key::Save        => {  },
+                    Key::Enter       => { Prompt::enter_pressed(inner_type, editor) },
+                    Key::Delete      => { editor.delete_pressed() },
+                    Key::BackSpace   => { editor.backspace_pressed() }
+                    Key::Char(c)     => { editor.write(c)}
+                    _                => {}
+                }
+                editor.status_bar.set_init();
+            })
     }
 
     fn scroll(&self) -> fn(&mut Editor) {
@@ -329,9 +332,27 @@ impl InputMode for Prompt {
     }
 }
 
+impl Normal {
+    fn enter_pressed(editor: &mut Editor) {
+        editor.file.split_line(editor.cursor.y, editor.cursor.x);
+        editor.move_cursor(MoveKey::ArrowRight);
+    }
+}
+
 impl Prompt {
     fn quit(editor: &mut Editor) {
         editor.change_input_mode(Normal);
         editor.status_bar.clear()
+    }
+
+    fn enter_pressed(inner_type: InnerType, editor: &mut Editor) {
+        match inner_type {
+            InnerType::Save => {
+                let file_name = editor.status_bar.take_prompt();
+                editor.file.set_name(file_name);
+                editor.save();
+            },
+            InnerType::Quit => { }
+        }
     }
 }
