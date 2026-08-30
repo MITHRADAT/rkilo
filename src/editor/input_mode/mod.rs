@@ -17,9 +17,6 @@ pub trait InputMode {
     fn scroll(&self)            -> fn(&mut Editor);
     fn write(&self)             -> Box<dyn Fn(&mut Editor, char)>;
     fn move_cursor(&self)       -> fn(&mut Editor, MoveKey);
-    fn enter_pressed(&self)     -> fn(&mut Editor);
-    fn delete_pressed(&self)    -> fn(&mut Editor);
-    fn backspace_pressed(&self) -> fn(&mut Editor);
     fn set(self)                -> Box<dyn FnOnce(&mut Editor)>;
 }
 
@@ -40,8 +37,8 @@ impl InputMode for Normal {
                     Key::Quit        => { editor.quit() },
                     Key::Save        => { editor.save() },
                     Key::Enter       => { Normal::enter_pressed(editor) },
-                    Key::Delete      => { editor.delete_pressed() },
-                    Key::BackSpace   => { editor.backspace_pressed() }
+                    Key::Delete      => { Normal::delete_pressed(editor) },
+                    Key::BackSpace   => { Normal::backspace_pressed(editor) }
                     Key::Char(c)     => { editor.write(c)}
                     _                => {}
                 }
@@ -152,48 +149,6 @@ impl InputMode for Normal {
         }
     }
 
-    fn enter_pressed(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            editor.file.split_line(editor.cursor.y, editor.cursor.x);
-            editor.move_cursor(MoveKey::ArrowRight);
-        }
-    }
-
-    fn delete_pressed(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            let max_x = editor.max_x();
-            if editor.cursor.x == max_x && editor.cursor.y + 1 == editor.file.lines.len() {
-                return
-            }
-
-            if editor.cursor.x == max_x {
-                editor.file.merge_lines(editor.cursor.y + 1, editor.cursor.y);
-                return
-            }
-
-            editor.file.lines[editor.cursor.y].remove(editor.cursor.x)
-        }
-    }
-
-    fn backspace_pressed(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            if editor.cursor.x == 0 && editor.cursor.y == 0 {
-                return
-            }
-
-            if editor.cursor.x == 0 {
-                let cursor_y = editor.cursor.y;
-                editor.move_cursor(MoveKey::ArrowLeft);
-                editor.file.merge_lines(cursor_y, editor.cursor.y);
-                return
-            }
-
-            editor.move_cursor(MoveKey::ArrowLeft);
-            editor.file.lines[editor.cursor.y].remove(editor.cursor.x);
-            return
-        }
-    }
-
     fn set(self) -> Box<dyn FnOnce(&mut Editor)> {
         Box::new(
             |editor: &mut Editor| {
@@ -222,8 +177,8 @@ impl InputMode for Prompt {
                     Key::Quit        => { Prompt::quit(editor) },
                     Key::Save        => {  },
                     Key::Enter       => { Prompt::enter_pressed(inner_type, editor) },
-                    Key::Delete      => { editor.delete_pressed() },
-                    Key::BackSpace   => { editor.backspace_pressed() }
+                    Key::Delete      => { Prompt::delete_pressed(editor) },
+                    Key::BackSpace   => { Prompt::backspace_pressed(editor) }
                     Key::Char(c)     => { editor.write(c)}
                     _                => {}
                 }
@@ -293,35 +248,6 @@ impl InputMode for Prompt {
         }
     }
 
-    fn enter_pressed(&self) -> fn(&mut Editor) {
-        match self.0 {
-            InnerType::Save => {
-                |editor: &mut Editor| {
-                    let file_name = editor.status_bar.take_prompt();
-                    editor.file.set_name(file_name);
-                    editor.save();
-                }
-            },
-            InnerType::Quit => {
-                |_: &mut Editor| {}
-            }
-        }
-    }
-
-    fn delete_pressed(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            editor.status_bar.prompt_delete(editor.cursor.x);
-        }
-    }
-
-    fn backspace_pressed(&self) -> fn(&mut Editor) {
-        |editor: &mut Editor| {
-            if editor.status_bar.prompt_backspace(editor.cursor.x).is_some() {
-                editor.move_cursor(MoveKey::ArrowLeft)
-            }
-        }
-    }
-
     fn set(self) -> Box<dyn FnOnce(&mut Editor)> {
         Box::new(
             |editor: &mut Editor| {
@@ -336,6 +262,37 @@ impl Normal {
     fn enter_pressed(editor: &mut Editor) {
         editor.file.split_line(editor.cursor.y, editor.cursor.x);
         editor.move_cursor(MoveKey::ArrowRight);
+    }
+
+    fn delete_pressed(editor: &mut Editor) {
+        let max_x = editor.max_x();
+        if editor.cursor.x == max_x && editor.cursor.y + 1 == editor.file.lines.len() {
+            return
+        }
+
+        if editor.cursor.x == max_x {
+            editor.file.merge_lines(editor.cursor.y + 1, editor.cursor.y);
+            return
+        }
+
+        editor.file.lines[editor.cursor.y].remove(editor.cursor.x)
+    }
+
+    fn backspace_pressed(editor: &mut Editor) {
+        if editor.cursor.x == 0 && editor.cursor.y == 0 {
+            return
+        }
+
+        if editor.cursor.x == 0 {
+            let cursor_y = editor.cursor.y;
+            editor.move_cursor(MoveKey::ArrowLeft);
+            editor.file.merge_lines(cursor_y, editor.cursor.y);
+            return
+        }
+
+        editor.move_cursor(MoveKey::ArrowLeft);
+        editor.file.lines[editor.cursor.y].remove(editor.cursor.x);
+        return
     }
 }
 
@@ -353,6 +310,16 @@ impl Prompt {
                 editor.save();
             },
             InnerType::Quit => { }
+        }
+    }
+
+    fn delete_pressed(editor: &mut Editor) {
+        editor.status_bar.prompt_delete(editor.cursor.x);
+    }
+
+    fn backspace_pressed(editor: &mut Editor) {
+        if editor.status_bar.prompt_backspace(editor.cursor.x).is_some() {
+            editor.move_cursor(MoveKey::ArrowLeft)
         }
     }
 }

@@ -297,16 +297,6 @@ impl Editor {
         self.status_bar.set_prompt(format!("{}/", dir.display()));
     }
 
-    fn delete_pressed(&mut self) {
-        let f = self.input_mode.delete_pressed();
-        f(self)
-    }
-
-    fn backspace_pressed(&mut self) {
-        let f = self.input_mode.backspace_pressed();
-        f(self)
-    }
-
     fn change_input_mode<T>(&mut self, input_mode: T)
     where
         T: InputMode
