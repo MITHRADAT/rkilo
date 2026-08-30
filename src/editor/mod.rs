@@ -221,11 +221,6 @@ impl Editor {
         }
     }
 
-    fn move_cursor(&mut self, key: MoveKey) {
-        let f = self.input_mode.move_cursor();
-        f(self, key)
-    }
-
     fn x_render(&self) -> usize {
         if self.file.lines.len() == 0 {
             return 0
