@@ -242,8 +242,13 @@ impl Prompt {
         match inner_type {
             InnerType::Save => {
                 let file_name = editor.status_bar.take_prompt();
-                editor.file.set_name(&file_name);
-                if Path::new(&file_name).is_file() {
+                let file_name = if let Some(index) = file_name.rfind('/') {
+                    let (_dir, name) = file_name.split_at(index + 1);
+                    name.trim_start().trim_end()
+                } else { file_name.trim_end() };
+
+                editor.file.set_name(file_name);
+                if Path::new(file_name).is_file() {
                     editor.status_bar.set_message(
                         format!("{} already exists. overwrite? (y/n)", file_name));
                     return editor.change_input_mode(Prompt(InnerType::Overwrite))
