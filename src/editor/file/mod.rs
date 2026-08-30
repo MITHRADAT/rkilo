@@ -2,44 +2,44 @@ use std::{fs, io::{self, Write}, time};
 use super::super::common::*;
 
 pub struct File {
-    pub name: Option<String>,
+    pub name : Option<String>,
     pub lines: Vec<Line>,
 }
 
 impl File {
-    pub fn save(&mut self) -> SaveStatus {
-        if self.name.is_some() {
-            self.persist()
-        } else {
-            SaveStatus::NameRequest
+    pub fn new() -> Self {
+        Self {
+            name   : None,
+            lines  : vec![],
         }
     }
 
-    pub fn set_name(&mut self, name: String) {
-        self.name = Some(name)
+    pub fn set_name(&mut self, name: &str) {
+        self.name = Some(name.to_string())
     }
 
     pub fn clear_name(&mut self) {
         self.name = None
     }
 
-    fn persist(&mut self) -> SaveStatus {
+    pub fn persist(&mut self) -> SaveStatus {
+        let Some(full_name) = self.name.as_ref()
+        else { return SaveStatus::NameRequest };
+
         let Some(first_dirty) = self.lines.iter()
             .position(|line| line.dirty)
         else { return SaveStatus::NoChanges };
 
+        let Some(_file_name) = full_name
+            .rsplit('/')
+            .next()
+            .filter(|name| !name.is_empty())
+        else {
+            return SaveStatus::Fail(io::Error::new(
+                io::ErrorKind::InvalidInput, "can not find a file name to save"))
+        };
+
         let mut result = || -> io::Result<()> {
-            let full_name = self.name.as_ref()
-                .ok_or_else(|| io::Error::new(
-                    io::ErrorKind::InvalidInput, "can not find a file name to save"))?;
-
-            full_name
-                .rsplit('/')
-                .next()
-                .filter(|name| !name.is_empty())
-                .ok_or(io::Error::new(
-                    io::ErrorKind::InvalidInput, "can not find a file name to save"))?;
-
             let temp_name = format!("{}.rkilotemp{:?}", full_name, time::SystemTime::now());
             let mut temp = fs::File::create(&temp_name)?;
 

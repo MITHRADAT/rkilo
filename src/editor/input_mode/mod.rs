@@ -1,11 +1,12 @@
-use std::cmp;
+use std::{cmp, path::Path};
 use super::Editor;
 use super::super::common::*;
 
 #[derive(Copy, Clone)]
 pub enum InnerType {
     Save,
-    Quit
+    Quit,
+    Overwrite,
 }
 
 pub struct Normal;
@@ -241,10 +242,16 @@ impl Prompt {
         match inner_type {
             InnerType::Save => {
                 let file_name = editor.status_bar.take_prompt();
-                editor.file.set_name(file_name);
+                editor.file.set_name(&file_name);
+                if Path::new(&file_name).is_file() {
+                    editor.status_bar.set_message(
+                        format!("{} already exists. overwrite? (y/n)", file_name));
+                    return editor.change_input_mode(Prompt(InnerType::Overwrite))
+                }
                 editor.save();
             },
-            InnerType::Quit => { }
+            InnerType::Quit      => {},
+            InnerType::Overwrite => {},
         }
     }
 
@@ -272,6 +279,15 @@ impl Prompt {
                     editor.end(DieReason::Quit)
                 }
                 if c == 'n' || c == 'N' {
+                    Prompt::quit(editor)
+                }
+            },
+            InnerType::Overwrite => {
+                if c == 'y' || c == 'Y' {
+                    editor.save();
+                }
+                if c == 'n' || c == 'N' {
+                    editor.file.clear_name();
                     Prompt::quit(editor)
                 }
             }
@@ -304,7 +320,8 @@ impl Prompt {
                     MoveKey::PageDown  => {},
                 }
             },
-            InnerType::Quit => {}
+            InnerType::Quit      => {},
+            InnerType::Overwrite => {},
         }
     }
 }
