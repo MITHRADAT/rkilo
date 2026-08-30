@@ -245,11 +245,6 @@ impl Editor {
         x_render
     }
 
-    fn write(&mut self, key: u8) {
-        let f = self.input_mode.write();
-        f(self, key as char);
-    }
-
     fn quit(&mut self) {
         if self.file.is_dirty() {
             self.status_bar.set_message(format!("there are some unsaved changes. are you sure? (y/n)"));

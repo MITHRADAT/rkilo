@@ -15,7 +15,6 @@ pub trait InputMode {
     fn cursor_position(&self)   -> fn(&Editor) -> (usize, usize);
     fn process_keypress(&self)  -> Box<dyn Fn(&mut Editor, Key)>;
     fn scroll(&self)            -> fn(&mut Editor);
-    fn write(&self)             -> Box<dyn Fn(&mut Editor, char)>;
     fn move_cursor(&self)       -> fn(&mut Editor, MoveKey);
     fn set(self)                -> Box<dyn FnOnce(&mut Editor)>;
 }
@@ -39,7 +38,7 @@ impl InputMode for Normal {
                     Key::Enter       => { Normal::enter_pressed(editor) },
                     Key::Delete      => { Normal::delete_pressed(editor) },
                     Key::BackSpace   => { Normal::backspace_pressed(editor) }
-                    Key::Char(c)     => { editor.write(c)}
+                    Key::Char(c)     => { Normal::write(editor, c as char)}
                     _                => {}
                 }
             })
@@ -65,26 +64,6 @@ impl InputMode for Normal {
                 editor.cursor.x_offset = x_render - editor.screen.cols() + 1;
             }
         }
-    }
-
-    fn write(&self) -> Box<dyn Fn(&mut Editor, char)> {
-        Box::new(
-            |editor: &mut Editor, c: char| {
-                let cursor_y = editor.cursor.y;
-                if editor.file.lines.len() > cursor_y {
-                    let cursor_x = editor.cursor.x;
-                    let line = &mut editor.file.lines[cursor_y];
-                    if line.chars.len() > cursor_x {
-                        line.insert(c, cursor_x);
-                    } else {
-                        line.push(c);
-                    }
-                } else {
-                    let line: String = (c).into();
-                    editor.file.add_new_line(&line, true);
-                }
-                editor.move_cursor(MoveKey::ArrowRight)
-            })
     }
 
     fn move_cursor(&self) -> fn(&mut Editor, MoveKey) {
@@ -179,7 +158,7 @@ impl InputMode for Prompt {
                     Key::Enter       => { Prompt::enter_pressed(inner_type, editor) },
                     Key::Delete      => { Prompt::delete_pressed(editor) },
                     Key::BackSpace   => { Prompt::backspace_pressed(editor) }
-                    Key::Char(c)     => { editor.write(c)}
+                    Key::Char(c)     => { Prompt::write(inner_type, editor, c as char)}
                     _                => {}
                 }
                 editor.status_bar.set_init();
@@ -188,30 +167,6 @@ impl InputMode for Prompt {
 
     fn scroll(&self) -> fn(&mut Editor) {
         |_: &mut Editor| {}
-    }
-
-    fn write(&self) -> Box<dyn Fn(&mut Editor, char)> {
-        let inner_type = self.0;
-        Box::new(
-            move |editor: &mut Editor, c: char| {
-                if c == '\t' {
-                    return
-                }
-                match inner_type {
-                    InnerType::Save => {
-                        editor.status_bar.prompt_insert(c, editor.cursor.x);
-                        editor.move_cursor(MoveKey::ArrowRight)
-                    },
-                    InnerType::Quit => {
-                        if c == 'y' || c == 'Y' {
-                            editor.end(DieReason::Quit)
-                        }
-                        if c == 'n' || c == 'N' {
-                            Prompt::quit(editor)
-                        }
-                    }
-                }
-            })
     }
 
     fn move_cursor(&self) -> fn(&mut Editor, MoveKey) {
@@ -294,6 +249,23 @@ impl Normal {
         editor.file.lines[editor.cursor.y].remove(editor.cursor.x);
         return
     }
+
+    fn write(editor: &mut Editor, c: char) {
+        let cursor_y = editor.cursor.y;
+        if editor.file.lines.len() > cursor_y {
+            let cursor_x = editor.cursor.x;
+            let line = &mut editor.file.lines[cursor_y];
+            if line.chars.len() > cursor_x {
+                line.insert(c, cursor_x);
+            } else {
+                line.push(c);
+            }
+        } else {
+            let line: String = (c).into();
+            editor.file.add_new_line(&line, true);
+        }
+        editor.move_cursor(MoveKey::ArrowRight)
+    }
 }
 
 impl Prompt {
@@ -320,6 +292,26 @@ impl Prompt {
     fn backspace_pressed(editor: &mut Editor) {
         if editor.status_bar.prompt_backspace(editor.cursor.x).is_some() {
             editor.move_cursor(MoveKey::ArrowLeft)
+        }
+    }
+
+    fn write(inner_type: InnerType, editor: &mut Editor, c: char) {
+        if c == '\t' {
+            return
+        }
+        match inner_type {
+            InnerType::Save => {
+                editor.status_bar.prompt_insert(c, editor.cursor.x);
+                editor.move_cursor(MoveKey::ArrowRight)
+            },
+            InnerType::Quit => {
+                if c == 'y' || c == 'Y' {
+                    editor.end(DieReason::Quit)
+                }
+                if c == 'n' || c == 'N' {
+                    Prompt::quit(editor)
+                }
+            }
         }
     }
 }
