@@ -52,6 +52,7 @@ pub enum Key {
     ESC,
     Save,
     SaveAs,
+    Open,
     Enter,
 }
 

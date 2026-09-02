@@ -19,6 +19,15 @@ impl Cursor {
         }
     }
 
+    pub fn refresh(&mut self) {
+        self.x = 0;
+        self.y = 0;
+        self.x_offset = 0;
+        self.y_offset = 0;
+        self.horizon = 0;
+        self.stored_x = None;
+    }
+
     pub fn store_x(&mut self) {
         if self.stored_x.is_some() {
             return

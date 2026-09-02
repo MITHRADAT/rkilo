@@ -7,6 +7,7 @@ pub enum InnerType {
     Save,
     Quit,
     Overwrite,
+    Open,
 }
 
 pub struct Normal;
@@ -36,6 +37,7 @@ impl InputMode for Normal {
                     Key::Quit        => { editor.quit() },
                     Key::Save        => { editor.save() },
                     Key::SaveAs      => { editor.save_as() },
+                    Key::Open        => { Prompt::request_open_file(editor) },
                     Key::Enter       => { Normal::enter_pressed(editor) },
                     Key::Delete      => { Normal::delete_pressed(editor) },
                     Key::BackSpace   => { Normal::backspace_pressed(editor) }
@@ -255,6 +257,17 @@ impl Prompt {
                 }
                 editor.save();
             },
+            InnerType::Open => {
+                let file_name = editor.status_bar.take_prompt();
+                if Path::new(&file_name).is_file() {
+                    editor.status_bar.clear();
+                    editor.open_file(&file_name);
+                } else {
+                    editor.status_bar.set_message(
+                    format!("can not find {}", file_name))
+                }
+                editor.change_input_mode(Normal)
+            }
             InnerType::Quit      => {},
             InnerType::Overwrite => {},
         }
@@ -275,7 +288,7 @@ impl Prompt {
             return
         }
         match inner_type {
-            InnerType::Save => {
+            InnerType::Save | InnerType::Open => {
                 editor.status_bar.prompt_insert(c, editor.cursor.x);
                 Prompt::move_cursor(inner_type, editor, MoveKey::ArrowRight)
             },
@@ -301,7 +314,7 @@ impl Prompt {
 
     fn move_cursor(inner_type: InnerType, editor: &mut Editor, key: MoveKey) {
         match inner_type {
-            InnerType::Save => {
+            InnerType::Save | InnerType::Open => {
                 match key {
                     MoveKey::ArrowLeft => {
                         if editor.status_bar.prompt_index(editor.cursor.x) > 0 {
@@ -328,5 +341,10 @@ impl Prompt {
             InnerType::Quit      => {},
             InnerType::Overwrite => {},
         }
+    }
+
+    fn request_open_file(editor: &mut Editor) {
+        editor.request("file name to open: ");
+        editor.change_input_mode(Prompt(InnerType::Open))
     }
 }

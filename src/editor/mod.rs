@@ -17,7 +17,7 @@ impl Editor {
         let screen = Screen::get();
         let editor = Self {
             file  : File::new(),
-            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save, Ctrl-W: save as"),
+            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save, Ctrl-W: save as, Ctrl-O: open"),
             cursor: Cursor::get(),
             screen: screen,
             input_mode: Box::new(Normal)
@@ -76,6 +76,7 @@ impl Editor {
         if byte == ctrl_key(b'l') { return Key::ESC }
         if byte == ctrl_key(b'q') { return Key::Quit }
         if byte == ctrl_key(b's') { return Key::Save }
+        if byte == ctrl_key(b'o') { return Key::Open }
         if byte == ctrl_key(b'w') { return Key::SaveAs }
         if byte == 8              { return Key::BackSpace }
         if byte == 127            { return Key::BackSpace }
@@ -247,8 +248,14 @@ impl Editor {
         }
     }
 
+    fn open_file(&mut self, path: &str) {
+        self.cursor.refresh();
+        self.file = File::new();
+        self.read_file(path);
+    }
+
     fn save_as(&mut self) {
-        self.request_file_name();
+        self.request("file name to save: ");
         self.change_input_mode(Prompt(InnerType::Save))
     }
 
@@ -266,9 +273,9 @@ impl Editor {
                 self.change_input_mode(Normal)
             },
             SaveStatus::NameRequest => {
-                self.request_file_name();
+                self.request("file name to save: ");
                 self.change_input_mode(Prompt(InnerType::Save))
-            }
+            },
             SaveStatus::Fail(error) => {
                 self.file.clear_name();
                 self.status_bar.set_message(
@@ -278,12 +285,12 @@ impl Editor {
         }
     }
 
-    fn request_file_name(&mut self) {
+    fn request(&mut self, msg: &str) {
         let dir = env::current_dir()
             .unwrap_or_else(|err| {
                 self.end(DieReason::Panic(err.to_string()))
             });
-        self.status_bar.set_message(format!("file name to save: "));
+        self.status_bar.set_message(msg.to_string());
         self.status_bar.set_prompt(format!("{}/", dir.display()));
     }
 
