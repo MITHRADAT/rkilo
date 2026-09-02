@@ -25,11 +25,7 @@ impl File {
     pub fn persist(&mut self) -> SaveStatus {
         let Some(full_name) = self.name.as_ref()
         else { return SaveStatus::NameRequest };
-
-        let Some(first_dirty) = self.lines.iter()
-            .position(|line| line.dirty)
-        else { return SaveStatus::NoChanges };
-
+        let full_name = full_name.to_string();
         let Some(_file_name) = full_name
             .rsplit('/')
             .next()
@@ -38,6 +34,14 @@ impl File {
             return SaveStatus::Fail(io::Error::new(
                 io::ErrorKind::InvalidInput, "can not find a file name to save"))
         };
+
+        if self.lines.len() == 0 {
+            self.add_new_line("", true);
+        }
+
+        let Some(first_dirty) = self.lines.iter()
+            .position(|line| line.dirty)
+        else { return SaveStatus::NoChanges };
 
         let mut result = || -> io::Result<()> {
             let temp_name = format!("{}.rkilotemp{:?}", full_name, time::SystemTime::now());
