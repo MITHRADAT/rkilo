@@ -245,8 +245,8 @@ impl Prompt {
             InnerType::Save => {
                 let file_name = editor.status_bar.take_prompt();
                 let file_name = if let Some(index) = file_name.rfind('/') {
-                    let (_dir, name) = file_name.split_at(index + 1);
-                    name.trim_start().trim_end()
+                    let (dir, name) = file_name.split_at(index + 1);
+                    &format!("{}{}", dir, name.trim())
                 } else { file_name.trim_end() };
 
                 editor.file.set_name(file_name);
