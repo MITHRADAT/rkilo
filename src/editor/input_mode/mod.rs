@@ -1,6 +1,7 @@
-use std::{cmp, path::Path};
+use std::cmp;
 use super::Editor;
 use super::super::common::*;
+
 
 #[derive(Copy, Clone)]
 pub enum InnerType {
@@ -244,27 +245,33 @@ impl Prompt {
         match inner_type {
             InnerType::Save => {
                 let file_name = editor.status_bar.take_prompt();
-                let file_name = if let Some(index) = file_name.rfind('/') {
-                    let (dir, name) = file_name.split_at(index + 1);
-                    &format!("{}{}", dir, name.trim())
-                } else { file_name.trim_end() };
-
-                editor.file.set_name(file_name);
-                if Path::new(file_name).is_file() {
-                    editor.status_bar.set_message(
-                        format!("{} already exists. overwrite? (y/n)", file_name));
-                    return editor.change_input_mode(Prompt(InnerType::Overwrite))
+                match editor.file.set_path(&file_name) {
+                    Ok(_) => {},
+                    Err(_) => {
+                        editor.status_bar.set_message(
+                            format!("can not save {}", file_name));
+                        return editor.change_input_mode(Normal)
+                    }
                 }
-                editor.save();
+                if editor.file.exists() {
+                    editor.status_bar.set_message(
+                        format!("{} already exists. overwrite? (y/n)", editor.file.path().unwrap().display()));
+                    editor.change_input_mode(Prompt(InnerType::Overwrite))
+                } else {
+                    editor.save();
+                }
             },
             InnerType::Open => {
-                let file_name = editor.status_bar.take_prompt();
-                if Path::new(&file_name).is_file() {
-                    editor.status_bar.clear();
-                    editor.open_file(&file_name);
-                } else {
-                    editor.status_bar.set_message(
-                    format!("can not find {}", file_name))
+                let path = editor.status_bar.take_prompt();
+                match editor.file.set_path(&path) {
+                    Ok(_) => {
+                        editor.status_bar.clear();
+                        editor.open_file()
+                    },
+                    Err(_) => {
+                        editor.status_bar.set_message(
+                            format!("can not open {}", path))
+                    }
                 }
                 editor.change_input_mode(Normal)
             }
@@ -305,7 +312,7 @@ impl Prompt {
                     editor.save();
                 }
                 if c == 'n' || c == 'N' {
-                    editor.file.clear_name();
+                    editor.file.clear_path();
                     Prompt::quit(editor)
                 }
             }

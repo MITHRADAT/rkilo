@@ -1,7 +1,8 @@
 use std::{io::{self, Read}, fs, cmp, env};
 
 mod cursor; mod screen; mod file; mod status_bar; mod input_mode;
-use cursor::Cursor; use screen::Screen; use status_bar::StatusBar; use input_mode::*; use file::*; use super::common::*;
+use cursor::Cursor; use screen::Screen; use status_bar::StatusBar;
+use input_mode::*; use file::*; use super::common::*;
 
 
 pub struct Editor {
@@ -15,7 +16,7 @@ pub struct Editor {
 impl Editor {
     pub fn init() -> Self {
         let screen = Screen::get();
-        let editor = Self {
+        let mut editor = Self {
             file  : File::new(),
             status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save, Ctrl-W: save as, Ctrl-O: open"),
             cursor: Cursor::get(),
@@ -24,7 +25,17 @@ impl Editor {
         };
 
         editor.screen.enable_raw_mode();
+        editor.process_args();
         editor
+    }
+
+    fn process_args(&mut self) {
+        if let Some(path) = env::args().nth(1) {
+            match self.file.set_path(&path) {
+                Ok(_) => { self.read_file()  },
+                Err(reason) => { self.end(reason) }
+            }
+        }
     }
 
     fn end(&self, reason: DieReason) -> ! {
@@ -32,15 +43,16 @@ impl Editor {
         die(reason)
     }
 
-    pub fn read_file(&mut self, path: &str) {
-        self.file.name = Some(path.to_string());
-        fs::read_to_string(path).unwrap_or_else(|err| {
-            self.end(DieReason::Panic(err.to_string()))
-        })
-            .lines()
-            .for_each(|line| {
-                self.file.add_new_line(line, false);
+    pub fn read_file(&mut self) {
+        if let Some(path) = self.file.path() {
+            fs::read_to_string(path).unwrap_or_else(|err| {
+                self.end(DieReason::Panic(err.to_string()))
             })
+                .lines()
+                .for_each(|line| {
+                    self.file.add_new_line(line, false);
+                })
+        }
     }
 
     pub fn refresh_screen(&mut self) {
@@ -170,7 +182,8 @@ impl Editor {
 
         let mut display_name = String::from("scratch");
         let mut current_line_number = String::from("");
-        if let Some(file_name) = &self.file.name {
+        if let Some(file_name) = self.file.name() {
+            let file_name = file_name.to_string_lossy();
             if file_name.len() > 19 {
                 display_name = format!("{} - {} lines", &file_name[..19], self.file.lines.len());
             } else {
@@ -248,13 +261,13 @@ impl Editor {
         }
     }
 
-    fn open_file(&mut self, path: &str) {
+    fn open_file(&mut self) {
         self.cursor.refresh();
-        self.file = File::new();
-        self.read_file(path);
+        self.read_file();
     }
 
     fn save_as(&mut self) {
+        self.file.make_dirty();
         self.request("file name to save: ");
         self.change_input_mode(Prompt(InnerType::Save))
     }
@@ -262,9 +275,8 @@ impl Editor {
     fn save(&mut self) {
         match self.file.persist() {
             SaveStatus::Successful => {
-                let file_name = &self.file.name.as_ref().unwrap();
                 self.status_bar.set_message(
-                    format!("{} saved successfully!", file_name));
+                    format!("{} saved successfully!", self.file.path().unwrap().display()));
                 self.change_input_mode(Normal)
             },
             SaveStatus::NoChanges => {
@@ -277,7 +289,7 @@ impl Editor {
                 self.change_input_mode(Prompt(InnerType::Save))
             },
             SaveStatus::Fail(error) => {
-                self.file.clear_name();
+                self.file.clear_path();
                 self.status_bar.set_message(
                     format!("error occurred while saving: {}", error));
                 self.change_input_mode(Normal)

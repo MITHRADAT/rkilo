@@ -1,39 +1,72 @@
-use std::{fs, io::{self, Write}, time};
+use std::{fs, time, io::{self, Write}, path::{Path, PathBuf}, ffi::OsStr};
 use super::super::common::*;
 
 pub struct File {
-    pub name : Option<String>,
+    path: Option<PathBuf>,
     pub lines: Vec<Line>,
 }
 
 impl File {
     pub fn new() -> Self {
         Self {
-            name   : None,
-            lines  : vec![],
+            path: None,
+            lines: vec![],
         }
     }
 
-    pub fn set_name(&mut self, name: &str) {
-        self.name = Some(name.to_string())
+    pub fn set_path(&mut self, path: &str) -> Result<(), DieReason> {
+        let path = PathBuf::from(path);
+
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+
+        let absolute_parent = fs::canonicalize(parent)
+            .map_err(|err| DieReason::Panic(err.to_string()))?;
+
+        let file_name = path
+            .file_name()
+            .ok_or_else(|| DieReason::Panic(
+                "invalid file name".to_string()))?;
+
+        Ok(self.path = Some(absolute_parent.join(file_name)))
     }
 
-    pub fn clear_name(&mut self) {
-        self.name = None
+    pub fn exists(&self) -> bool {
+        if let Some(path) = self.path.as_ref() {
+            path.exists()
+        } else { false }
+    }
+
+    pub fn path(&self) -> Option<&PathBuf> {
+        self.path.as_ref()
+    }
+
+    pub fn name(&self) -> Option<&OsStr> {
+        self.path.as_deref().and_then(Path::file_name)
+    }
+
+    pub fn dir(&self) -> Option<&Path> {
+        self.path.as_deref().and_then(Path::parent)
+    }
+
+    pub fn clear_path(&mut self) {
+        self.path = None
+    }
+
+    pub fn make_dirty(&mut self) {
+        if self.lines.len() == 0 {
+            self.add_new_line("", true)
+        } else {
+            self.lines[0].dirty = true;
+        }
     }
 
     pub fn persist(&mut self) -> SaveStatus {
-        let Some(full_name) = self.name.as_ref()
-        else { return SaveStatus::NameRequest };
-        let full_name = full_name.to_string();
-        let Some(_file_name) = full_name
-            .rsplit('/')
-            .next()
-            .filter(|name| !name.is_empty())
-        else {
-            return SaveStatus::Fail(io::Error::new(
-                io::ErrorKind::InvalidInput, "can not find a file name to save"))
-        };
+        if self.path.is_none() {
+            return SaveStatus::NameRequest
+        }
 
         if self.lines.len() == 0 {
             self.add_new_line("", true);
@@ -44,7 +77,8 @@ impl File {
         else { return SaveStatus::NoChanges };
 
         let mut result = || -> io::Result<()> {
-            let temp_name = format!("{}.rkilotemp{:?}", full_name, time::SystemTime::now());
+            let path = self.path.as_ref().unwrap();
+            let temp_name = format!("{}.temp{:?}", path.display(), time::SystemTime::now());
             let mut temp = fs::File::create(&temp_name)?;
 
             for line in &self.lines[..first_dirty] {
@@ -67,7 +101,7 @@ impl File {
             temp.sync_all()?;
             drop(temp);
 
-            fs::rename(temp_name, full_name)?;
+            fs::rename(temp_name, path)?;
             Ok(())
         };
 
