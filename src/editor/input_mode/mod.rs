@@ -35,6 +35,7 @@ impl InputMode for Normal {
                     Key::Move(key)   => { Normal::move_cursor(editor, key) },
                     Key::Quit        => { editor.quit() },
                     Key::Save        => { editor.save() },
+                    Key::SaveAs      => { editor.save_as() },
                     Key::Enter       => { Normal::enter_pressed(editor) },
                     Key::Delete      => { Normal::delete_pressed(editor) },
                     Key::BackSpace   => { Normal::backspace_pressed(editor) }
@@ -92,7 +93,6 @@ impl InputMode for Prompt {
                 match input {
                     Key::Move(key)   => { Prompt::move_cursor(inner_type, editor, key) },
                     Key::Quit        => { Prompt::quit(editor) },
-                    Key::Save        => {  },
                     Key::Enter       => { Prompt::enter_pressed(inner_type, editor) },
                     Key::Delete      => { Prompt::delete_pressed(editor) },
                     Key::BackSpace   => { Prompt::backspace_pressed(inner_type, editor) }

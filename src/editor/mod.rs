@@ -17,7 +17,7 @@ impl Editor {
         let screen = Screen::get();
         let editor = Self {
             file  : File::new(),
-            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save"),
+            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save, Ctrl-W: save as"),
             cursor: Cursor::get(),
             screen: screen,
             input_mode: Box::new(Normal)
@@ -76,6 +76,7 @@ impl Editor {
         if byte == ctrl_key(b'l') { return Key::ESC }
         if byte == ctrl_key(b'q') { return Key::Quit }
         if byte == ctrl_key(b's') { return Key::Save }
+        if byte == ctrl_key(b'w') { return Key::SaveAs }
         if byte == 8              { return Key::BackSpace }
         if byte == 127            { return Key::BackSpace }
         if byte == b'\r'          { return Key::Enter }
@@ -244,6 +245,11 @@ impl Editor {
         } else {
             self.end(DieReason::Quit)
         }
+    }
+
+    fn save_as(&mut self) {
+        self.request_file_name();
+        self.change_input_mode(Prompt(InnerType::Save))
     }
 
     fn save(&mut self) {
