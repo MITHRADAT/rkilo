@@ -48,8 +48,8 @@ impl Editor {
         print!("\x1b[?25l"); //hide the cursor
         print!("\x1b[H"); //reposition the cursor
         self.draw_rows();
+        self.draw_info_bar();
         self.draw_status_bar();
-        self.draw_message_bar();
         self.show_cursor();
         flush();
     }
@@ -165,7 +165,7 @@ impl Editor {
         }
     }
 
-    fn draw_status_bar(&self) {
+    fn draw_info_bar(&self) {
         print!("\x1b[7m"); //0: clear all attribute, 1: bold, 4: underscore, 5: blink, 7: inverted color
 
         let mut display_name = String::from("scratch");
@@ -197,7 +197,7 @@ impl Editor {
         print!("\r\n");
     }
 
-    fn draw_message_bar(&self) {
+    fn draw_status_bar(&self) {
         print!("\x1b[K"); //clear the line
 
         let message = self.status_bar.message()
