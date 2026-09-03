@@ -55,6 +55,7 @@ pub enum Key {
     Open,
     Enter,
     GoToLine,
+    DuplicateLine,
 }
 
 pub enum MoveKey {

@@ -176,6 +176,17 @@ impl File {
     pub fn is_dirty(&self) -> bool {
         self.lines.iter().any(|line| line.dirty)
     }
+
+    pub fn duplicate_line(&mut self, index: usize) {
+        if self.lines.len() == 0 {
+            self.lines.push(Line::new_empty());
+            self.lines.push(Line::new_empty());
+            return
+        }
+        let line = &mut self.lines[index];
+        let new_line = line.duplicate();
+        self.lines.insert(index, new_line)
+    }
 }
 
 pub struct Line {
@@ -239,6 +250,16 @@ impl Line {
                 self.render.push(*c);
                 index += 1;
             }
+        }
+    }
+
+    fn duplicate(&mut self) -> Self {
+        self.dirty = true;
+        Self {
+            chars: self.chars.clone(),
+            render: self.render.clone(),
+            persist: vec![],
+            dirty: true
         }
     }
 }

@@ -36,15 +36,16 @@ impl InputMode for Normal {
             |editor: &mut Editor, input: Key| {
                 match input {
                     Key::Move(key)   => { Normal::move_cursor(editor, key) },
-                    Key::Quit        => { editor.quit() },
-                    Key::Save        => { editor.save() },
-                    Key::SaveAs      => { editor.save_as() },
-                    Key::Enter       => { Normal::enter_pressed(editor) },
-                    Key::Delete      => { Normal::delete_pressed(editor) },
-                    Key::BackSpace   => { Normal::backspace_pressed(editor) }
-                    Key::Char(c)     => { Normal::write(editor, c as char)}
-                    Key::GoToLine    => { Prompt::request_line_number(editor) },
-                    Key::Open        => { Prompt::request_open_file(editor) },
+                    Key::Quit          => { editor.quit() },
+                    Key::Save          => { editor.save() },
+                    Key::SaveAs        => { editor.save_as() },
+                    Key::DuplicateLine => { Normal::duplicate_line(editor) },
+                    Key::Enter         => { Normal::enter_pressed(editor) },
+                    Key::Delete        => { Normal::delete_pressed(editor) },
+                    Key::BackSpace     => { Normal::backspace_pressed(editor) }
+                    Key::Char(c)       => { Normal::write(editor, c as char)}
+                    Key::GoToLine      => { Prompt::request_line_number(editor) },
+                    Key::Open          => { Prompt::request_open_file(editor) },
                     _                => {}
                 }
             })
@@ -234,6 +235,11 @@ impl Normal {
                 editor.cursor.horizon = max_x
             }
         }
+    }
+
+    fn duplicate_line(editor: &mut Editor) {
+        editor.file.duplicate_line(editor.cursor.y);
+        Normal::move_cursor(editor, MoveKey::ArrowDown)
     }
 }
 
