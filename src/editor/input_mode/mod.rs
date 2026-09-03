@@ -266,12 +266,7 @@ impl Prompt {
                 match editor.file.set_path(&path) {
                     Ok(_) => {
                         editor.flush();
-                        if editor.file.exists_as_file() {
-                            editor.read_file()
-                        } else {
-                            editor.status_bar.set_message(
-                                format!("no such file as {}", path))
-                        }
+                        editor.read_file()
                     },
                     Err(_) => {
                         editor.status_bar.set_message(

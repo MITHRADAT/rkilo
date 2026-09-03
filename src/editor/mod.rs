@@ -1,4 +1,4 @@
-use std::{io::{self, Read}, fs, cmp, env};
+use std::{io::{self, Read}, cmp, env};
 
 mod cursor; mod screen; mod file; mod status_bar; mod input_mode;
 use cursor::Cursor; use screen::Screen; use status_bar::StatusBar;

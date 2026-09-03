@@ -128,8 +128,8 @@ impl File {
     }
 
     pub fn read(&mut self) -> Result<(), DieReason> {
-        if let Some(path) = self.path() {
-            fs::read_to_string(path)
+        if self.exists_as_file() {
+            fs::read_to_string(self.path().unwrap())
                 .map_err(|err| DieReason::Panic(err.to_string()))?
                 .lines()
                 .for_each(|line| {
