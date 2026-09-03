@@ -44,14 +44,9 @@ impl Editor {
     }
 
     pub fn read_file(&mut self) {
-        if let Some(path) = self.file.path() {
-            fs::read_to_string(path).unwrap_or_else(|err| {
-                self.end(DieReason::Panic(err.to_string()))
-            })
-                .lines()
-                .for_each(|line| {
-                    self.file.add_new_line(line, false);
-                })
+        match self.file.read() {
+            Ok(_) => {},
+            Err(reason) => self.end(reason)
         }
     }
 

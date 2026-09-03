@@ -127,6 +127,18 @@ impl File {
         hasher.finish().to_string()
     }
 
+    pub fn read(&mut self) -> Result<(), DieReason> {
+        if let Some(path) = self.path() {
+            fs::read_to_string(path)
+                .map_err(|err| DieReason::Panic(err.to_string()))?
+                .lines()
+                .for_each(|line| {
+                    self.add_new_line(line, false)
+                })
+        }
+        Ok(())
+    }
+
     pub fn add_new_line(&mut self, line: &str, dirty: bool) {
         let new_line = Line::new(line, dirty);
         self.lines.push(new_line)
