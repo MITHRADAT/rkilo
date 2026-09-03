@@ -1,4 +1,6 @@
-use std::{fs, time, io::{self, Write}, path::{Path, PathBuf}, ffi::OsStr};
+use std::{fs, time, io::{self, Write}, path::{Path, PathBuf}, ffi::OsStr,
+          collections::hash_map, hash::{Hash, Hasher}};
+
 use super::super::common::*;
 
 pub struct File {
@@ -78,7 +80,7 @@ impl File {
 
         let mut result = || -> io::Result<()> {
             let path = self.path.as_ref().unwrap();
-            let temp_name = format!("{}.temp{:?}", path.display(), time::SystemTime::now());
+            let temp_name = File::hash_path_now(path);
             let mut temp = fs::File::create(&temp_name)?;
 
             for line in &self.lines[..first_dirty] {
@@ -116,6 +118,13 @@ impl File {
                 SaveStatus::Fail(error)
             }
         }
+    }
+
+    fn hash_path_now(path: &PathBuf) -> String {
+        let mut hasher = hash_map::DefaultHasher::new();
+        path.hash(&mut hasher);
+        time::SystemTime::now().hash(&mut hasher);
+        hasher.finish().to_string()
     }
 
     pub fn add_new_line(&mut self, line: &str, dirty: bool) {
