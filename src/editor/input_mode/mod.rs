@@ -253,7 +253,7 @@ impl Prompt {
                         return editor.change_input_mode(Normal)
                     }
                 }
-                if editor.file.exists() {
+                if editor.file.exists_as_file() {
                     editor.status_bar.set_message(
                         format!("{} already exists. overwrite? (y/n)", editor.file.path().unwrap().display()));
                     editor.change_input_mode(Prompt(InnerType::Overwrite))
@@ -266,7 +266,7 @@ impl Prompt {
                 match editor.file.set_path(&path) {
                     Ok(_) => {
                         editor.flush();
-                        if editor.file.exists() {
+                        if editor.file.exists_as_file() {
                             editor.read_file()
                         } else {
                             editor.status_bar.set_message(

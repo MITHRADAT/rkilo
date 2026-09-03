@@ -35,9 +35,9 @@ impl File {
         Ok(self.path = Some(absolute_parent.join(file_name)))
     }
 
-    pub fn exists(&self) -> bool {
+    pub fn exists_as_file(&self) -> bool {
         if let Some(path) = self.path.as_ref() {
-            path.exists()
+            path.is_file()
         } else { false }
     }
 
