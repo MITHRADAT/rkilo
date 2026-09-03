@@ -9,6 +9,7 @@ pub enum InnerType {
     Quit,
     Overwrite,
     Open,
+    GoToLine,
 }
 
 pub struct Normal;
@@ -38,11 +39,12 @@ impl InputMode for Normal {
                     Key::Quit        => { editor.quit() },
                     Key::Save        => { editor.save() },
                     Key::SaveAs      => { editor.save_as() },
-                    Key::Open        => { Prompt::request_open_file(editor) },
                     Key::Enter       => { Normal::enter_pressed(editor) },
                     Key::Delete      => { Normal::delete_pressed(editor) },
                     Key::BackSpace   => { Normal::backspace_pressed(editor) }
                     Key::Char(c)     => { Normal::write(editor, c as char)}
+                    Key::GoToLine    => { Prompt::request_line_number(editor) },
+                    Key::Open        => { Prompt::request_open_file(editor) },
                     _                => {}
                 }
             })
@@ -274,7 +276,21 @@ impl Prompt {
                     }
                 }
                 editor.change_input_mode(Normal)
-            }
+            },
+            InnerType::GoToLine => {
+                let prompt = editor.status_bar.take_prompt();
+                editor.change_input_mode(Normal);
+                match prompt.parse::<i32>() {
+                    Ok(line_number) => {
+                        editor.cursor.refresh();
+                        if line_number <= 0 { return }
+                        editor.cursor.y = cmp::min(line_number as usize, editor.file.lines.len()).saturating_sub(1)
+                    },
+                    Err(_) => {
+                        editor.status_bar.set_message("not an integer".to_string());
+                    }
+                }
+            },
             InnerType::Quit      => {},
             InnerType::Overwrite => {},
         }
@@ -295,7 +311,7 @@ impl Prompt {
             return
         }
         match inner_type {
-            InnerType::Save | InnerType::Open => {
+            InnerType::Save | InnerType::Open | InnerType::GoToLine => {
                 editor.status_bar.prompt_insert(c, editor.cursor.x);
                 Prompt::move_cursor(inner_type, editor, MoveKey::ArrowRight)
             },
@@ -321,7 +337,7 @@ impl Prompt {
 
     fn move_cursor(inner_type: InnerType, editor: &mut Editor, key: MoveKey) {
         match inner_type {
-            InnerType::Save | InnerType::Open => {
+            InnerType::Save | InnerType::Open | InnerType::GoToLine => {
                 match key {
                     MoveKey::ArrowLeft => {
                         if editor.status_bar.prompt_index(editor.cursor.x) > 0 {
@@ -351,7 +367,12 @@ impl Prompt {
     }
 
     fn request_open_file(editor: &mut Editor) {
-        editor.request("file name to open: ");
+        editor.request_file_name("file name to open: ");
         editor.change_input_mode(Prompt(InnerType::Open))
+    }
+
+    fn request_line_number(editor: &mut Editor) {
+        editor.request("go to line: ");
+        editor.change_input_mode(Prompt(InnerType::GoToLine))
     }
 }

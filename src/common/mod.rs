@@ -54,6 +54,7 @@ pub enum Key {
     SaveAs,
     Open,
     Enter,
+    GoToLine,
 }
 
 pub enum MoveKey {

@@ -18,7 +18,7 @@ impl Editor {
         let screen = Screen::get();
         let mut editor = Self {
             file  : File::new(),
-            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save, Ctrl-W: save as, Ctrl-O: open"),
+            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save, Ctrl-W: save as, Ctrl-O: open, Ctrl-G: go to line"),
             cursor: Cursor::get(),
             screen: screen,
             input_mode: Box::new(Normal)
@@ -79,6 +79,7 @@ impl Editor {
         let mut buff = [0u8; 1];
         let byte = self.read_byte(&mut buff);
 
+        if byte == ctrl_key(b'g') { return Key::GoToLine }
         if byte == ctrl_key(b'h') { return Key::BackSpace }
         if byte == ctrl_key(b'l') { return Key::ESC }
         if byte == ctrl_key(b'q') { return Key::Quit }
@@ -264,7 +265,7 @@ impl Editor {
 
     fn save_as(&mut self) {
         self.file.make_dirty();
-        self.request("file name to save: ");
+        self.request_file_name("file name to save: ");
         self.change_input_mode(Prompt(InnerType::Save))
     }
 
@@ -281,7 +282,7 @@ impl Editor {
                 self.change_input_mode(Normal)
             },
             SaveStatus::NameRequest => {
-                self.request("file name to save: ");
+                self.request_file_name("file name to save: ");
                 self.change_input_mode(Prompt(InnerType::Save))
             },
             SaveStatus::Fail(error) => {
@@ -293,13 +294,17 @@ impl Editor {
         }
     }
 
-    fn request(&mut self, msg: &str) {
+    fn request_file_name(&mut self, msg: &str) {
         let dir = env::current_dir()
             .unwrap_or_else(|err| {
                 self.end(DieReason::Panic(err.to_string()))
             });
         self.status_bar.set_message(msg.to_string());
         self.status_bar.set_prompt(format!("{}/", dir.display()));
+    }
+
+    fn request(&mut self, msg: &str) {
+        self.status_bar.set_message(msg.to_string());
     }
 
     fn change_input_mode<T>(&mut self, input_mode: T)
