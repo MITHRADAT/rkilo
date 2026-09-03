@@ -261,9 +261,10 @@ impl Editor {
         }
     }
 
-    fn open_file(&mut self) {
+    fn flush(&mut self) {
         self.cursor.refresh();
-        self.read_file();
+        self.file.lines.clear();
+        self.status_bar.clear();
     }
 
     fn save_as(&mut self) {

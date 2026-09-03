@@ -265,8 +265,13 @@ impl Prompt {
                 let path = editor.status_bar.take_prompt();
                 match editor.file.set_path(&path) {
                     Ok(_) => {
-                        editor.status_bar.clear();
-                        editor.open_file()
+                        editor.flush();
+                        if editor.file.exists() {
+                            editor.read_file()
+                        } else {
+                            editor.status_bar.set_message(
+                                format!("no such file as {}", path))
+                        }
                     },
                     Err(_) => {
                         editor.status_bar.set_message(
