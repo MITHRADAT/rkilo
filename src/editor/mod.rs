@@ -18,7 +18,7 @@ impl Editor {
         let screen = Screen::get();
         let mut editor = Self {
             file  : File::new(),
-            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save, Ctrl-W: save as, Ctrl-O: open, Ctrl-G: go to line, Ctrl-D: duplicate line"),
+            status_bar: StatusBar::new("Help: Ctrl-Q: quit, Ctrl-S: save, Ctrl-W: save as, Ctrl-O: open, Ctrl-G: go to line, Ctrl-D: duplicate line, Ctrl-L: delete the line"),
             cursor: Cursor::get(),
             screen: screen,
             input_mode: Box::new(Normal)
@@ -80,9 +80,9 @@ impl Editor {
         let byte = self.read_byte(&mut buff);
 
         if byte == ctrl_key(b'd') { return Key::DuplicateLine }
+        if byte == ctrl_key(b'l') { return Key::DeleteLine }
         if byte == ctrl_key(b'g') { return Key::GoToLine }
         if byte == ctrl_key(b'h') { return Key::BackSpace }
-        if byte == ctrl_key(b'l') { return Key::ESC }
         if byte == ctrl_key(b'q') { return Key::Quit }
         if byte == ctrl_key(b's') { return Key::Save }
         if byte == ctrl_key(b'o') { return Key::Open }

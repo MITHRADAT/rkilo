@@ -40,6 +40,7 @@ impl InputMode for Normal {
                     Key::Save          => { editor.save() },
                     Key::SaveAs        => { editor.save_as() },
                     Key::DuplicateLine => { Normal::duplicate_line(editor) },
+                    Key::DeleteLine    => { Normal::delete_line(editor) },
                     Key::Enter         => { Normal::enter_pressed(editor) },
                     Key::Delete        => { Normal::delete_pressed(editor) },
                     Key::BackSpace     => { Normal::backspace_pressed(editor) }
@@ -240,6 +241,11 @@ impl Normal {
     fn duplicate_line(editor: &mut Editor) {
         editor.file.duplicate_line(editor.cursor.y);
         Normal::move_cursor(editor, MoveKey::ArrowDown)
+    }
+
+    fn delete_line(editor: &mut Editor) {
+        editor.file.delete_line(editor.cursor.y);
+        Normal::move_cursor(editor, MoveKey::ArrowUp)
     }
 }
 

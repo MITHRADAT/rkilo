@@ -187,6 +187,21 @@ impl File {
         let new_line = line.duplicate();
         self.lines.insert(index, new_line)
     }
+
+    pub fn delete_line(&mut self, index: usize) {
+        if self.lines.len() == 0 {
+            return
+        }
+
+        self.lines.remove(index);
+
+        if index == 0 {
+            self.make_dirty();
+            return
+        }
+
+        self.lines[index - 1].dirty = true;
+    }
 }
 
 pub struct Line {
